@@ -320,6 +320,7 @@ defmodule MyBudget.Movements do
   """
   def list_category(%Scope{} = scope) do
     Category
+    |> order_by(asc: :section_id)
     |> Repo.all_by(user_id: scope.user.id)
     |> Repo.preload([:section])
   end

@@ -93,8 +93,9 @@ defmodule MyBudgetWeb.MovementLive.Index do
       {:ok, formated_value} =
         Cldr.Number.to_string(amount, locale: "pt", currency: "BRL")
 
-      Map.put(movement, :amount, formated_value)
-      Map.put(movement, :expend_date, expend_date)
+      movement
+      |> Map.put(:amount, formated_value)
+      |> Map.put(:expend_date, expend_date)
     end)
   end
 end

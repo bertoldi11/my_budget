@@ -58,17 +58,22 @@ defmodule MyBudgetWeb.HomeLive.Index do
   defp list_movement(current_scope) do
     current_scope
     |> Movements.list_current_month()
-    |> format_amount()
+    |> format_data()
   end
 
-  defp format_amount(movements) do
+  defp format_data(movements) do
     Enum.map(movements, fn movement ->
       amount = movement.amount / 100
+
+      expend_date =
+        "#{movement.expend_date.day}/#{movement.expend_date.month}/#{movement.expend_date.year}"
 
       {:ok, formated_value} =
         Cldr.Number.to_string(amount, locale: "pt", currency: "BRL")
 
-      Map.put(movement, :amount, formated_value)
+      movement
+      |> Map.put(:amount, formated_value)
+      |> Map.put(:expend_date, expend_date)
     end)
   end
 end
