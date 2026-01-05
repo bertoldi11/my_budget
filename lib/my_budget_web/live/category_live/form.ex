@@ -84,7 +84,7 @@ defmodule MyBudgetWeb.CategoryLive.Form do
   defp save_category(socket, :edit, category_params) do
     case Movements.update_category(
            socket.assigns.current_scope,
-           socket.assigns._category,
+           socket.assigns.category,
            category_params
          ) do
       {:ok, category} ->

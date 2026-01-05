@@ -16,28 +16,30 @@ defmodule MyBudgetWeb.CategoryLive.Index do
         </:actions>
       </.header>
 
-      <.table
-        id="category"
-        rows={@streams.category_collection}
-        row_click={fn {_id, category} -> JS.navigate(~p"/category/#{category}") end}
-      >
-        <:col :let={{_id, category}} label="Nome">{category.name}</:col>
-        <:col :let={{_id, category}} label="Sessão">{category.section.name}</:col>
-        <:action :let={{_id, category}}>
-          <div class="sr-only">
-            <.link navigate={~p"/category/#{category}"}>Detalhes</.link>
-          </div>
-          <.link navigate={~p"/category/#{category}/edit"}>Editar</.link>
-        </:action>
-        <:action :let={{id, category}}>
-          <.link
-            phx-click={JS.push("delete", value: %{id: category.id}) |> hide("##{id}")}
-            data-confirm="Tem certeza que deseja apagar essa sub categoria?"
-          >
-            Apagar
-          </.link>
-        </:action>
-      </.table>
+      <%= for {_, section} <- @streams.category_collection do %>
+        <h3 class="font-semibold">{section.section_name}</h3>
+        <.table
+          id="category"
+          rows={section.categories}
+          row_click={fn {_id, category} -> JS.navigate(~p"/category/#{category}") end}
+        >
+          <:col :let={{_id, category}} label="">{category.name}</:col>
+          <:action :let={{_id, category}}>
+            <div class="sr-only">
+              <.link navigate={~p"/category/#{category}"}>Detalhes</.link>
+            </div>
+            <.link navigate={~p"/category/#{category}/edit"}>Editar</.link>
+          </:action>
+          <:action :let={{id, category}}>
+            <.link
+              phx-click={JS.push("delete", value: %{id: category.id}) |> hide("##{id}")}
+              data-confirm="Tem certeza que deseja apagar essa categoria?"
+            >
+              Apagar
+            </.link>
+          </:action>
+        </.table>
+      <% end %>
     </Layouts.app>
     """
   end
@@ -72,6 +74,35 @@ defmodule MyBudgetWeb.CategoryLive.Index do
   end
 
   defp list_category(current_scope) do
-    Movements.list_category(current_scope)
+    current_scope
+    |> Movements.list_category()
+    |> sections_with_metadata()
+  end
+
+  defp group_by_section(categories) do
+    Enum.group_by(categories, fn category ->
+      category.section.name
+    end)
+  end
+
+  defp sections_with_metadata(categories) when is_list(categories) do
+    categories
+    |> group_by_section()
+    |> Enum.map(fn {section_name, categories} ->
+      %{
+        section_name: section_name,
+        id: section_name,
+        count: length(categories),
+        categories: add_dom_id(categories)
+      }
+    end)
+    |> Enum.sort_by(& &1.section_name)
+  end
+
+  defp add_dom_id(categories) do
+    Enum.map(categories, fn category ->
+      category_id = "cat_#{category.id}"
+      {category_id, category}
+    end)
   end
 end

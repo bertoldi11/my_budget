@@ -16,31 +16,24 @@ defmodule MyBudgetWeb.HomeLive.Index do
           <h3>{section.section_name}</h3>
           <p>{section.total_amount}</p>
         </div>
-        <table class="table table-zebra border-spacing-1">
-          <thead>
-            <tr>
-              <th>Categoria</th>
-              <th>Data</th>
-              <th>Pago Com</th>
-              <th>Valor</th>
-              <th>Descrição</th>
-              <th>Pago/Recebido de</th>
-              <th>Tipo</th>
-            </tr>
-          </thead>
-
-          <tbody>
-            <tr :for={movement <- section.movements}>
-              <td>{movement.category.name}</td>
-              <td>{movement.formatted_expend_date}</td>
-              <td>{movement.payment_method.name}</td>
-              <td>{movement.formatted_amount}</td>
-              <td>{movement.description}</td>
-              <td>{movement.counter_party}</td>
-              <td>{movement.type}</td>
-            </tr>
-          </tbody>
-        </table>
+        <.table
+          id="movement"
+          rows={section.movements}
+          row_click={fn {_id, movement} -> JS.navigate(~p"/movement/#{movement}") end}
+        >
+          <:col :let={{_id, movement}} label="Categoria">{movement.category.name}</:col>
+          <:col :let={{_id, movement}} label="Data">{movement.expend_date}</:col>
+          <:col :let={{_id, movement}} label="Pago com">{movement.payment_method.name}</:col>
+          <:col :let={{_id, movement}} label="Valor">{movement.amount}</:col>
+          <:col :let={{_id, movement}} label="Descrição">{movement.description}</:col>
+          <:col :let={{_id, movement}} label="Pago/Recebido de">{movement.counter_party}</:col>
+          <:col :let={{_id, movement}} label="Tipo">{movement.type}</:col>
+          <:action :let={{_id, movement}}>
+            <div class="sr-only">
+              <.link navigate={~p"/movement/#{movement}"}>Detalhes</.link>
+            </div>
+          </:action>
+        </.table>
       <% end %>
     </Layouts.app>
     """
@@ -129,9 +122,16 @@ defmodule MyBudgetWeb.HomeLive.Index do
         id: section_name,
         count: length(movs),
         total_amount: formatted_total_amount,
-        movements: movs
+        movements: add_dom_id(movs)
       }
     end)
     |> Enum.sort_by(& &1.section_name)
+  end
+
+  defp add_dom_id(movements) do
+    Enum.map(movements, fn movement ->
+      movement_id = "mov_#{movement.id}"
+      {movement_id, movement}
+    end)
   end
 end
