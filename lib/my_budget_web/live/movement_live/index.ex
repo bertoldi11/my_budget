@@ -23,9 +23,9 @@ defmodule MyBudgetWeb.MovementLive.Index do
         row_click={fn {_id, movement} -> JS.navigate(~p"/movement/#{movement}") end}
       >
         <:col :let={{_id, movement}} label="Categoria">{movement.category.name}</:col>
-        <:col :let={{_id, movement}} label="Data">{movement.expend_date}</:col>
+        <:col :let={{_id, movement}} label="Data">{movement.formatted_expend_date}</:col>
         <:col :let={{_id, movement}} label="Pago com">{movement.payment_method.name}</:col>
-        <:col :let={{_id, movement}} label="Valor">{movement.amount}</:col>
+        <:col :let={{_id, movement}} label="Valor">{movement.formatted_amount}</:col>
         <:col :let={{_id, movement}} label="Descrição">{movement.description}</:col>
         <:col :let={{_id, movement}} label="Pago/Recebido de">{movement.counter_party}</:col>
         <:col :let={{_id, movement}} label="Tipo">{movement.type}</:col>
@@ -94,8 +94,8 @@ defmodule MyBudgetWeb.MovementLive.Index do
         Cldr.Number.to_string(amount, locale: "pt", currency: "BRL")
 
       movement
-      |> Map.put(:amount, formated_value)
-      |> Map.put(:expend_date, expend_date)
+      |> Map.put(:formatted_amount, formated_value)
+      |> Map.put(:formatted_expend_date, expend_date)
     end)
   end
 end

@@ -479,7 +479,7 @@ defmodule MyBudget.Movements do
 
     query
     |> Repo.all()
-    |> Repo.preload([:category, :payment_method])
+    |> Repo.preload([:payment_method, category: :section])
   end
 
   @doc """
