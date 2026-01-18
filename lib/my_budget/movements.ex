@@ -462,6 +462,7 @@ defmodule MyBudget.Movements do
   """
   def list_movement(%Scope{} = scope) do
     Movement
+    |> order_by([m], desc: m.expend_date)
     |> Repo.all_by(user_id: scope.user.id)
     |> Repo.preload([:category, :payment_method])
   end
@@ -471,15 +472,16 @@ defmodule MyBudget.Movements do
     start_day_of_month = Date.beginning_of_month(current_date)
     end_day_of_month = Date.end_of_month(current_date)
 
-    query =
-      from m in Movement,
-        where:
-          m.expend_date >= ^start_day_of_month and m.expend_date <= ^end_day_of_month and
-            m.user_id == ^scope.user.id
-
-    query
+    Movement
+    |> join(:inner, [m], c in Category, on: m.category_id == c.id )
+    |> join(:inner, [_, c], s in Section, on: c.section_id == s.id)
+    |> select([m, c, s], %{session: s.name, category: c.name, amount: sum(m.amount)})
+    |> where([m, _, _], m.expend_date >= ^start_day_of_month)
+    |> where([m, _, _], m.expend_date <= ^end_day_of_month)
+    |> where([m, _, _], m.user_id == ^scope.user.id)
+    |> group_by([_, c, s], [s.name, c.name])
+    |> order_by([_, c, s], [asc: s.name, asc: c.name])
     |> Repo.all()
-    |> Repo.preload([:payment_method, category: :section])
   end
 
   @doc """

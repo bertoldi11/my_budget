@@ -56,12 +56,12 @@ defmodule MyBudgetWeb.MovementLive.Form do
     categories_options =
       socket.assigns.current_scope
       |> MyBudget.Movements.list_category()
-      |> map_to_options()
+      |> map_to_options("section")
 
     payment_method_options =
       socket.assigns.current_scope
       |> MyBudget.Movements.list_payment_method()
-      |> map_to_options()
+      |> map_to_options(nil)
 
     socket
     |> assign(:page_title, "Editar Movimentação")
@@ -78,12 +78,12 @@ defmodule MyBudgetWeb.MovementLive.Form do
     categories_options =
       socket.assigns.current_scope
       |> MyBudget.Movements.list_category()
-      |> map_to_options()
+      |> map_to_options("section")
 
     payment_method_options =
       socket.assigns.current_scope
       |> MyBudget.Movements.list_payment_method()
-      |> map_to_options()
+      |> map_to_options(nil)
 
     socket
     |> assign(:page_title, "Nova Movimentação")
@@ -108,6 +108,18 @@ defmodule MyBudgetWeb.MovementLive.Form do
 
   def handle_event("save", %{"movement" => movement_params}, socket) do
     save_movement(socket, socket.assigns.live_action, movement_params)
+  end
+
+  @impl true
+  def handle_event("live_select_change", %{"text" => text, "id" => live_select_id}, socket) do
+    categories =
+      Enum.filter(socket.assigns.categories_options, fn {category_name, _} -> 
+        String.starts_with?(category_name, text)
+      end)
+
+    send_update(LiveSelect.Component, id: live_select_id, options: categories)
+
+    {:noreply, socket}
   end
 
   defp save_movement(socket, :edit, movement_params) do
@@ -147,7 +159,14 @@ defmodule MyBudgetWeb.MovementLive.Form do
   defp return_path(_scope, "index", _movement), do: ~p"/movement"
   defp return_path(_scope, "show", movement), do: ~p"/movement/#{movement}"
 
-  defp map_to_options(data) do
+  defp map_to_options(data, "section") do
+    Enum.map(data, fn category -> 
+      label = "#{category.section.name} / #{category.name}"
+      {label, category.id}
+    end) 
+  end
+
+  defp map_to_options(data, nil) do
     Enum.map(data, &{&1.name, &1.id})
   end
 

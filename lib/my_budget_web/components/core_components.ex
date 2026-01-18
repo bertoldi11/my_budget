@@ -495,4 +495,33 @@ defmodule MyBudgetWeb.CoreComponents do
   def translate_errors(errors, field) when is_list(errors) do
     for {^field, {msg, opts}} <- errors, do: translate_error({msg, opts})
   end
+
+  def live_select(%{field: %Phoenix.HTML.FormField{} = field} = assigns) do
+    assigns =
+      assigns
+      |> assign(:errors, Enum.map(field.errors, &translate_error(&1)))
+      |> assign(:live_select_opts, assigns_to_attributes(assigns, [:errors, :label]))
+    
+    ~H"""
+    <div phx-feedback-for={@field.name}>
+      <label for={@field.id}>
+        <span class="label mb-1 text-xs"><%= @label %></span>
+
+        <LiveSelect.live_select
+          field={@field}
+          text_input_class={[
+            "w-full input",
+            "text-zinc-900 focus:outline-none focus:ring-4 sm:text-sm sm:leading-6",
+            "phx-no-feedback:border-zinc-300 phx-no-feedback:focus:border-zinc-400 phx-no-feedback:focus:ring-zinc-800/5",
+            "border-zinc-300 focus:border-zinc-400 focus:ring-zinc-800/5",
+            @errors != [] && "border-rose-400 focus:border-rose-400 focus:ring-rose-400/10"
+          ]}
+          {@live_select_opts}
+        />
+      
+        </label>
+      <.error :for={msg <- @errors}><%= msg %></.error>
+    </div>
+    """
+  end
 end

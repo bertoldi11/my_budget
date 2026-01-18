@@ -16,24 +16,12 @@ defmodule MyBudgetWeb.HomeLive.Index do
           <h3>{section.section_name}</h3>
           <p>{section.total_amount}</p>
         </div>
-        <.table
-          id="movement"
-          rows={section.movements}
-          row_click={fn {_id, movement} -> JS.navigate(~p"/movement/#{movement}") end}
-        >
-          <:col :let={{_id, movement}} label="Categoria">{movement.category.name}</:col>
-          <:col :let={{_id, movement}} label="Data">{movement.expend_date}</:col>
-          <:col :let={{_id, movement}} label="Pago com">{movement.payment_method.name}</:col>
-          <:col :let={{_id, movement}} label="Valor">{movement.amount}</:col>
-          <:col :let={{_id, movement}} label="Descrição">{movement.description}</:col>
-          <:col :let={{_id, movement}} label="Pago/Recebido de">{movement.counter_party}</:col>
-          <:col :let={{_id, movement}} label="Tipo">{movement.type}</:col>
-          <:action :let={{_id, movement}}>
-            <div class="sr-only">
-              <.link navigate={~p"/movement/#{movement}"}>Detalhes</.link>
-            </div>
-          </:action>
-        </.table>
+        <%= for {_, category} <- section.categories do %>
+        <div class="flex justify-between ml-8">
+            <p>{category.category}</p>
+            <p>{category.formatted_amount}</p>
+          </div>
+        <% end %>
       <% end %>
     </Layouts.app>
     """
@@ -62,15 +50,10 @@ defmodule MyBudgetWeb.HomeLive.Index do
     Enum.map(movements, fn movement ->
       amount = movement.amount / 100
 
-      expend_date =
-        "#{movement.expend_date.day}/#{movement.expend_date.month}/#{movement.expend_date.year}"
-
       {:ok, formated_value} =
         Cldr.Number.to_string(amount, locale: "pt", currency: "BRL")
 
-      movement
-      |> Map.put(:formatted_amount, formated_value)
-      |> Map.put(:formatted_expend_date, expend_date)
+      Map.put(movement, :formatted_amount, formated_value)
     end)
   end
 
@@ -81,9 +64,9 @@ defmodule MyBudgetWeb.HomeLive.Index do
   Movimentos sem seção definida vão para a chave `"Sem seção"`.
   """
   @spec group_by_section([map()]) :: %{optional(String.t()) => [map()]}
-  def group_by_section(movements) when is_list(movements) do
-    Enum.group_by(movements, fn movement ->
-      movement.category.section.name || "Sem seção"
+  def group_by_section(data) when is_list(data) do
+    Enum.group_by(data, fn entry ->
+      entry.session || "Sem seção"
     end)
   end
 
@@ -111,7 +94,7 @@ defmodule MyBudgetWeb.HomeLive.Index do
     |> Enum.map(fn {section_name, movs} ->
       total_amount =
         Enum.reduce(movs, 0, fn mov, acc ->
-          acc + mov.amount
+          acc + mov.amount 
         end)
 
       {:ok, formatted_total_amount} =
@@ -122,16 +105,16 @@ defmodule MyBudgetWeb.HomeLive.Index do
         id: section_name,
         count: length(movs),
         total_amount: formatted_total_amount,
-        movements: add_dom_id(movs)
+        categories: add_dom_id(movs)
       }
     end)
     |> Enum.sort_by(& &1.section_name)
   end
 
-  defp add_dom_id(movements) do
-    Enum.map(movements, fn movement ->
-      movement_id = "mov_#{movement.id}"
-      {movement_id, movement}
+  defp add_dom_id(categories) do
+    Enum.map(categories, fn category ->
+      category_id = "category_#{category.category}"
+      {category_id, category}
     end)
   end
 end
