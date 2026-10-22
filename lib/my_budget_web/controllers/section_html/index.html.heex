@@ -1,0 +1,61 @@
+<Layouts.app flash={@flash} current_scope={@current_scope}>
+  <.header>
+    Sessões
+    <:subtitle>Agrupam suas categorias.</:subtitle>
+    <:actions>
+      <.button variant="primary" href={~p"/section/new"}>
+        <.icon name="hero-plus" /> Nova
+      </.button>
+    </:actions>
+  </.header>
+
+  <%!-- Estado vazio --%>
+  <div
+    :if={@section_collection == []}
+    class="rounded-box border border-dashed border-base-300 py-12 text-center"
+  >
+    <.icon name="hero-folder" class="mx-auto size-10 text-base-content/40" />
+    <p class="mt-2 font-medium">Nenhuma sessão cadastrada</p>
+    <p class="text-sm text-base-content/60">
+      Cadastre sessões para agrupar suas categorias.
+    </p>
+    <.button variant="primary" href={~p"/section/new"} class="mt-4">
+      <.icon name="hero-plus" /> Nova sessão
+    </.button>
+  </div>
+
+  <%!-- Lista --%>
+  <section
+    :if={@section_collection != []}
+    class="rounded-box border border-base-300 bg-base-100 overflow-hidden"
+  >
+    <ul class="divide-y divide-base-200">
+      <li
+        :for={section <- @section_collection}
+        id={"section-#{section.id}"}
+        class="group flex items-center justify-between gap-3 px-4 py-3 hover:bg-base-200/50"
+      >
+        <.link href={~p"/section/#{section}"} class="flex-1 font-medium hover:underline">
+          {section.name}
+        </.link>
+
+        <div class="flex items-center gap-3 text-sm">
+          <.link
+            href={~p"/section/#{section}/edit"}
+            class="inline-flex items-center gap-1 text-base-content/70 hover:text-primary"
+          >
+            <.icon name="hero-pencil-square" class="size-4" /> Editar
+          </.link>
+          <.link
+            href={~p"/section/#{section}"}
+            method="delete"
+            data-confirm="Tem certeza que deseja excluir essa sessão?"
+            class="inline-flex items-center gap-1 text-base-content/70 hover:text-error"
+          >
+            <.icon name="hero-trash" class="size-4" /> Apagar
+          </.link>
+        </div>
+      </li>
+    </ul>
+  </section>
+</Layouts.app>

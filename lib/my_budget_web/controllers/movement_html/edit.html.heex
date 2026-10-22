@@ -1,0 +1,15 @@
+<Layouts.app flash={@flash} current_scope={@current_scope}>
+  <.header>
+    {@page_title}
+  </.header>
+
+  <.movement_form
+    form={@form}
+    action={~p"/movement/#{@movement}"}
+    categories_options={@categories_options}
+    payment_method_options={@payment_method_options}
+    type_options={@type_options}
+    return_to={@return_to}
+    cancel_path={if(@return_to == "show", do: ~p"/movement/#{@movement}", else: ~p"/movement")}
+  />
+</Layouts.app>

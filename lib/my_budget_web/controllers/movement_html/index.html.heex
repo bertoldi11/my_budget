@@ -1,0 +1,81 @@
+<Layouts.app flash={@flash} current_scope={@current_scope}>
+  <.header>
+    Movimentações
+    <:subtitle>Tudo o que entrou e saiu.</:subtitle>
+    <:actions>
+      <.button variant="primary" href={~p"/movement/new"}>
+        <.icon name="hero-plus" /> Nova Movimentação
+      </.button>
+    </:actions>
+  </.header>
+
+  <%!-- Estado vazio --%>
+  <div
+    :if={@movement_collection == []}
+    class="rounded-box border border-dashed border-base-300 py-12 text-center"
+  >
+    <.icon name="hero-arrows-right-left" class="mx-auto size-10 text-base-content/40" />
+    <p class="mt-2 font-medium">Nenhuma movimentação cadastrada</p>
+    <p class="text-sm text-base-content/60">
+      Cadastre uma movimentação para começar a acompanhar seu orçamento.
+    </p>
+    <.button variant="primary" href={~p"/movement/new"} class="mt-4">
+      <.icon name="hero-plus" /> Nova Movimentação
+    </.button>
+  </div>
+
+  <%!-- Lista --%>
+  <section
+    :if={@movement_collection != []}
+    class="rounded-box border border-base-300 bg-base-100 overflow-hidden"
+  >
+    <ul class="divide-y divide-base-200">
+      <li
+        :for={movement <- @movement_collection}
+        id={"movement-#{movement.id}"}
+        class="group flex items-center justify-between gap-3 px-4 py-3 hover:bg-base-200/50"
+      >
+        <div class="min-w-0 flex-1">
+          <.link href={~p"/movement/#{movement}"} class="font-medium hover:underline">
+            {movement.category.name}
+          </.link>
+          <p class="truncate text-sm text-base-content/60">
+            {format_date(movement.expend_date)} · {movement.payment_method.name}
+            <span :if={movement.counter_party not in [nil, ""]}>· {movement.counter_party}</span>
+          </p>
+          <p :if={movement.description not in [nil, ""]} class="truncate text-sm text-base-content/50">
+            {movement.description}
+          </p>
+        </div>
+
+        <div class="flex items-center gap-4">
+          <div class="text-right">
+            <p class={["font-semibold tabular-nums", movement_type_class(movement.type)]}>
+              {format_amount(movement.amount)}
+            </p>
+            <p class="text-xs text-base-content/60">{movement_type_label(movement.type)}</p>
+          </div>
+
+          <div class="flex items-center gap-3 text-sm">
+            <.link
+              href={~p"/movement/#{movement}/edit"}
+              class="inline-flex items-center gap-1 text-base-content/70 hover:text-primary"
+            >
+              <.icon name="hero-pencil-square" class="size-4" />
+              <span class="hidden sm:inline">Editar</span>
+            </.link>
+            <.link
+              href={~p"/movement/#{movement}"}
+              method="delete"
+              data-confirm="Tem certeza que deseja apagar essa movimentação?"
+              class="inline-flex items-center gap-1 text-base-content/70 hover:text-error"
+            >
+              <.icon name="hero-trash" class="size-4" />
+              <span class="hidden sm:inline">Apagar</span>
+            </.link>
+          </div>
+        </div>
+      </li>
+    </ul>
+  </section>
+</Layouts.app>

@@ -1,0 +1,8 @@
+<.form for={@form} id="section-form" action={@action}>
+  <input type="hidden" name="return_to" value={@return_to} />
+  <.input field={@form[:name]} type="text" label="Nome" />
+  <footer>
+    <.button phx-disable-with="Processando..." variant="primary">Salvar sessão</.button>
+    <.button href={@cancel_path}>Cancelar</.button>
+  </footer>
+</.form>

@@ -1,0 +1,69 @@
+<Layouts.app flash={@flash} current_scope={@current_scope}>
+  <.header>
+    Categorias
+    <:subtitle>Suas categorias organizadas por sessão.</:subtitle>
+    <:actions>
+      <.button variant="primary" href={~p"/category/new"}>
+        <.icon name="hero-plus" /> Nova
+      </.button>
+    </:actions>
+  </.header>
+
+  <%!-- Estado vazio --%>
+  <div
+    :if={@sections == []}
+    class="rounded-box border border-dashed border-base-300 py-12 text-center"
+  >
+    <.icon name="hero-tag" class="mx-auto size-10 text-base-content/40" />
+    <p class="mt-2 font-medium">Nenhuma categoria cadastrada</p>
+    <p class="text-sm text-base-content/60">
+      Cadastre categorias para organizar suas movimentações.
+    </p>
+    <.button variant="primary" href={~p"/category/new"} class="mt-4">
+      <.icon name="hero-plus" /> Nova categoria
+    </.button>
+  </div>
+
+  <%!-- Seções --%>
+  <div class="space-y-4">
+    <%= for section <- @sections do %>
+      <section class="rounded-box border border-base-300 bg-base-100 overflow-hidden">
+        <header class="flex items-center justify-between gap-3 bg-base-200 px-4 py-3">
+          <div class="flex items-center gap-2">
+            <h2 class="font-semibold">{section.section.name}</h2>
+            <span class="badge badge-sm badge-ghost">{length(section.categories)}</span>
+          </div>
+        </header>
+
+        <ul class="divide-y divide-base-200">
+          <li
+            :for={category <- section.categories}
+            id={"category-#{category.id}"}
+            class="group flex items-center justify-between gap-3 px-4 py-3 hover:bg-base-200/50"
+          >
+            <.link href={~p"/category/#{category}"} class="flex-1 font-medium hover:underline">
+              {category.name}
+            </.link>
+
+            <div class="flex items-center gap-3 text-sm">
+              <.link
+                href={~p"/category/#{category}/edit"}
+                class="inline-flex items-center gap-1 text-base-content/70 hover:text-primary"
+              >
+                <.icon name="hero-pencil-square" class="size-4" /> Editar
+              </.link>
+              <.link
+                href={~p"/category/#{category}"}
+                method="delete"
+                data-confirm="Tem certeza que deseja apagar essa categoria?"
+                class="inline-flex items-center gap-1 text-base-content/70 hover:text-error"
+              >
+                <.icon name="hero-trash" class="size-4" /> Apagar
+              </.link>
+            </div>
+          </li>
+        </ul>
+      </section>
+    <% end %>
+  </div>
+</Layouts.app>

@@ -14,7 +14,8 @@ defmodule MyBudget.AccountsFixtures do
 
   def valid_user_attributes(attrs \\ %{}) do
     Enum.into(attrs, %{
-      email: unique_user_email()
+      email: unique_user_email(),
+      password: "password@123456"
     })
   end
 
@@ -30,15 +31,14 @@ defmodule MyBudget.AccountsFixtures do
   def user_fixture(attrs \\ %{}) do
     user = unconfirmed_user_fixture(attrs)
 
-    token =
-      extract_user_token(fn url ->
-        Accounts.deliver_login_instructions(user, url)
-      end)
+    # Users registered with a password cannot confirm through magic link,
+    # so the fixture confirms them directly.
+    {:ok, user} =
+      user
+      |> Ecto.Changeset.change(confirmed_at: DateTime.utc_now(:second))
+      |> MyBudget.Repo.update()
 
-    {:ok, {user, _expired_tokens}} =
-      Accounts.login_user_by_magic_link(token)
-
-    user
+    %{user | authenticated_at: DateTime.utc_now(:second)}
   end
 
   def user_scope_fixture do

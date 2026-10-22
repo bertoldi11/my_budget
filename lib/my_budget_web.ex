@@ -44,23 +44,10 @@ defmodule MyBudgetWeb do
 
       import Plug.Conn
 
+      # Build forms from changesets and params to render in templates
+      import Phoenix.Component, only: [to_form: 1, to_form: 2]
+
       unquote(verified_routes())
-    end
-  end
-
-  def live_view do
-    quote do
-      use Phoenix.LiveView
-
-      unquote(html_helpers())
-    end
-  end
-
-  def live_component do
-    quote do
-      use Phoenix.LiveComponent
-
-      unquote(html_helpers())
     end
   end
 

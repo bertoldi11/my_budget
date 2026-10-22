@@ -1,0 +1,17 @@
+<Layouts.app flash={@flash} current_scope={@current_scope}>
+  <.header>
+    {@page_title}
+  </.header>
+
+  <.payment_method_form
+    form={@form}
+    action={~p"/payment_method/#{@payment_method}"}
+    return_to={@return_to}
+    cancel_path={
+      if(@return_to == "show",
+        do: ~p"/payment_method/#{@payment_method}",
+        else: ~p"/payment_method"
+      )
+    }
+  />
+</Layouts.app>

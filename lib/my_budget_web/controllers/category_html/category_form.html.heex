@@ -1,0 +1,9 @@
+<.form for={@form} id="category-form" action={@action}>
+  <input type="hidden" name="return_to" value={@return_to} />
+  <.input field={@form[:name]} type="text" label="Nome" />
+  <.input field={@form[:section_id]} type="select" label="Sessão" options={@sections_options} />
+  <footer>
+    <.button phx-disable-with="Saving..." variant="primary">Salvar</.button>
+    <.button href={@cancel_path}>Cancelar</.button>
+  </footer>
+</.form>

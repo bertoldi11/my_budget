@@ -49,10 +49,6 @@ defmodule MyBudgetWeb.UserAuth do
     user_token = get_session(conn, :user_token)
     user_token && Accounts.delete_user_session_token(user_token)
 
-    if live_socket_id = get_session(conn, :live_socket_id) do
-      MyBudgetWeb.Endpoint.broadcast(live_socket_id, "disconnect", %{})
-    end
-
     conn
     |> renew_session(nil)
     |> delete_resp_cookie(@remember_me_cookie)
@@ -163,97 +159,7 @@ defmodule MyBudgetWeb.UserAuth do
   end
 
   defp put_token_in_session(conn, token) do
-    conn
-    |> put_session(:user_token, token)
-    |> put_session(:live_socket_id, user_session_topic(token))
-  end
-
-  @doc """
-  Disconnects existing sockets for the given tokens.
-  """
-  def disconnect_sessions(tokens) do
-    Enum.each(tokens, fn %{token: token} ->
-      MyBudgetWeb.Endpoint.broadcast(user_session_topic(token), "disconnect", %{})
-    end)
-  end
-
-  defp user_session_topic(token), do: "users_sessions:#{Base.url_encode64(token)}"
-
-  @doc """
-  Handles mounting and authenticating the current_scope in LiveViews.
-
-  ## `on_mount` arguments
-
-    * `:mount_current_scope` - Assigns current_scope
-      to socket assigns based on user_token, or nil if
-      there's no user_token or no matching user.
-
-    * `:require_authenticated` - Authenticates the user from the session,
-      and assigns the current_scope to socket assigns based
-      on user_token.
-      Redirects to login page if there's no logged user.
-
-  ## Examples
-
-  Use the `on_mount` lifecycle macro in LiveViews to mount or authenticate
-  the `current_scope`:
-
-      defmodule MyBudgetWeb.PageLive do
-        use MyBudgetWeb, :live_view
-
-        on_mount {MyBudgetWeb.UserAuth, :mount_current_scope}
-        ...
-      end
-
-  Or use the `live_session` of your router to invoke the on_mount callback:
-
-      live_session :authenticated, on_mount: [{MyBudgetWeb.UserAuth, :require_authenticated}] do
-        live "/profile", ProfileLive, :index
-      end
-  """
-  def on_mount(:mount_current_scope, _params, session, socket) do
-    {:cont, mount_current_scope(socket, session)}
-  end
-
-  def on_mount(:require_authenticated, _params, session, socket) do
-    socket = mount_current_scope(socket, session)
-
-    if socket.assigns.current_scope && socket.assigns.current_scope.user do
-      {:cont, socket}
-    else
-      socket =
-        socket
-        |> Phoenix.LiveView.put_flash(:error, "You must log in to access this page.")
-        |> Phoenix.LiveView.redirect(to: ~p"/users/log-in")
-
-      {:halt, socket}
-    end
-  end
-
-  def on_mount(:require_sudo_mode, _params, session, socket) do
-    socket = mount_current_scope(socket, session)
-
-    if Accounts.sudo_mode?(socket.assigns.current_scope.user, -10) do
-      {:cont, socket}
-    else
-      socket =
-        socket
-        |> Phoenix.LiveView.put_flash(:error, "You must re-authenticate to access this page.")
-        |> Phoenix.LiveView.redirect(to: ~p"/users/log-in")
-
-      {:halt, socket}
-    end
-  end
-
-  defp mount_current_scope(socket, session) do
-    Phoenix.Component.assign_new(socket, :current_scope, fn ->
-      {user, _} =
-        if user_token = session["user_token"] do
-          Accounts.get_user_by_session_token(user_token)
-        end || {nil, nil}
-
-      Scope.for_user(user)
-    end)
+    put_session(conn, :user_token, token)
   end
 
   @doc "Returns the path to redirect to after log in."
@@ -263,6 +169,34 @@ defmodule MyBudgetWeb.UserAuth do
   end
 
   def signed_in_path(_), do: ~p"/"
+
+  @doc """
+  Plug for routes that require sudo mode.
+  """
+  def require_sudo_mode(conn, _opts) do
+    if Accounts.sudo_mode?(conn.assigns.current_scope.user, -10) do
+      conn
+    else
+      conn
+      |> put_flash(:error, "You must re-authenticate to access this page.")
+      |> maybe_store_return_to()
+      |> redirect(to: ~p"/users/log-in")
+      |> halt()
+    end
+  end
+
+  @doc """
+  Plug for routes that require the user to not be authenticated.
+  """
+  def redirect_if_user_is_authenticated(conn, _opts) do
+    if conn.assigns.current_scope do
+      conn
+      |> redirect(to: ~p"/")
+      |> halt()
+    else
+      conn
+    end
+  end
 
   @doc """
   Plug for routes that require the user to be authenticated.

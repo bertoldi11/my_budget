@@ -1,0 +1,17 @@
+<Layouts.app flash={@flash} current_scope={@current_scope}>
+  <.header>
+    Categoria {@category.id}
+    <:actions>
+      <.button href={~p"/category"}>
+        <.icon name="hero-arrow-left" />
+      </.button>
+      <.button variant="primary" href={~p"/category/#{@category}/edit?return_to=show"}>
+        <.icon name="hero-pencil-square" /> Editar
+      </.button>
+    </:actions>
+  </.header>
+
+  <.list>
+    <:item title="Name">{@category.name}</:item>
+  </.list>
+</Layouts.app>

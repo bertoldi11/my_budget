@@ -89,6 +89,31 @@ defmodule MyBudgetWeb.Layouts do
   end
 
   @doc """
+  Primary navigation links, as `{label, path}` tuples.
+  """
+  def nav_links do
+    [
+      {"Home", ~p"/"},
+      {"Movimentações", ~p"/movement"},
+      {"Categorias", ~p"/category"},
+      {"Sessões", ~p"/section"},
+      {"Métodos de pagamento", ~p"/payment_method"}
+    ]
+  end
+
+  @doc """
+  Returns true when `path` matches the current request path, so the
+  matching nav link can be highlighted.
+  """
+  def nav_active?(%Plug.Conn{request_path: "/"}, "/"), do: true
+  def nav_active?(%Plug.Conn{request_path: request_path}, "/"), do: request_path == "/"
+
+  def nav_active?(%Plug.Conn{request_path: request_path}, path),
+    do: String.starts_with?(request_path, path)
+
+  def nav_active?(_conn, _path), do: false
+
+  @doc """
   Provides dark vs light theme toggle based on themes defined in app.css.
 
   See <head> in root.html.heex which applies the theme before page load.

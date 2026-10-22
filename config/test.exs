@@ -9,8 +9,8 @@ config :bcrypt_elixir, :log_rounds, 1
 # to provide built-in test partitioning in CI environment.
 # Run `mix help test` for more information.
 config :my_budget, MyBudget.Repo,
-  username: "postgres",
-  password: "postgres",
+  username: "budget_app_user",
+  password: "budget_app_password",
   hostname: "localhost",
   database: "my_budget_test#{System.get_env("MIX_TEST_PARTITION")}",
   pool: Ecto.Adapters.SQL.Sandbox,

@@ -31,44 +31,83 @@
     </script>
   </head>
   <body>
-    <ul class="menu menu-horizontal w-full relative z-10 flex items-center gap-4 px-4 sm:px-6 lg:px-8 justify-end">
-      <%= if @current_scope do %>
-        <li>
-          <.link href={~p"/"}>Home</.link>
-        </li>
-        <li>
-          <.link href={~p"/movement"}>Movimentações</.link>
-        </li>
-        <li>
-          <.link href={~p"/category"}>Categorias</.link>
-        </li>
-        <li>
-          <.link href={~p"/section"}>Sessão</.link>
-        </li>
-        <li>
-          <.link href={~p"/payment_method"}>Métodos de Pagamentos</.link>
-        </li>
-        <li>
-          {@current_scope.user.email}
-        </li>
-        <li>
-          <.link href={~p"/users/settings"}>Configuracoes</.link>
-        </li>
-        <li>
-          <.link href={~p"/users/log-out"} method="delete">Sair</.link>
-        </li>
-      <% else %>
-        <li>
-          <.link href={~p"/users/register"}>Cadastre-se</.link>
-        </li>
-        <li>
-          <.link href={~p"/users/log-in"}>Entrar</.link>
-        </li>
-      <% end %>
-      <li>
-        <Layouts.theme_toggle />
-      </li>
-    </ul>
+    <header class="border-b border-base-300 bg-base-100">
+      <nav class="mx-auto flex max-w-5xl items-center gap-2 px-4 py-2 sm:px-6 lg:px-8">
+        <.link href={~p"/"} class="flex items-center gap-2 font-bold text-base-content">
+          <.icon name="hero-banknotes" class="size-6 text-primary" />
+          <span>MyBudget</span>
+        </.link>
+
+        <%= if @current_scope do %>
+          <%!-- Navegação (desktop) --%>
+          <ul class="ml-4 hidden items-center gap-1 md:flex">
+            <li :for={{label, path} <- Layouts.nav_links()}>
+              <.link
+                href={path}
+                class={[
+                  "rounded-field whitespace-nowrap px-3 py-1.5 text-sm hover:bg-base-200",
+                  Layouts.nav_active?(@conn, path) && "bg-base-200 font-semibold text-primary"
+                ]}
+              >
+                {label}
+              </.link>
+            </li>
+          </ul>
+
+          <div class="ml-auto flex items-center gap-2">
+            <Layouts.theme_toggle />
+
+            <%!-- Menu da conta --%>
+            <div class="dropdown dropdown-end">
+              <div tabindex="0" role="button" class="btn btn-ghost btn-sm gap-2">
+                <.icon name="hero-user-circle" class="size-5" />
+                <span class="hidden max-w-[12rem] truncate sm:inline">
+                  {@current_scope.user.email}
+                </span>
+              </div>
+              <ul
+                tabindex="0"
+                class="menu dropdown-content z-10 mt-2 w-56 rounded-box border border-base-300 bg-base-100 p-2 shadow"
+              >
+                <li>
+                  <.link href={~p"/users/settings"}>
+                    <.icon name="hero-cog-6-tooth" class="size-4" /> Configurações
+                  </.link>
+                </li>
+                <li>
+                  <.link href={~p"/users/log-out"} method="delete" class="text-error">
+                    <.icon name="hero-arrow-right-start-on-rectangle" class="size-4" /> Sair
+                  </.link>
+                </li>
+              </ul>
+            </div>
+
+            <%!-- Navegação (mobile) --%>
+            <div class="dropdown dropdown-end md:hidden">
+              <div tabindex="0" role="button" class="btn btn-ghost btn-sm">
+                <.icon name="hero-bars-3" class="size-5" />
+              </div>
+              <ul
+                tabindex="0"
+                class="menu dropdown-content z-10 mt-2 w-56 rounded-box border border-base-300 bg-base-100 p-2 shadow"
+              >
+                <li :for={{label, path} <- Layouts.nav_links()}>
+                  <.link href={path} class={Layouts.nav_active?(@conn, path) && "menu-active"}>
+                    {label}
+                  </.link>
+                </li>
+              </ul>
+            </div>
+          </div>
+        <% else %>
+          <div class="ml-auto flex items-center gap-2">
+            <Layouts.theme_toggle />
+            <.link href={~p"/users/log-in"} class="btn btn-ghost btn-sm">Entrar</.link>
+            <.link href={~p"/users/register"} class="btn btn-primary btn-sm">Cadastre-se</.link>
+          </div>
+        <% end %>
+      </nav>
+    </header>
     {@inner_content}
   </body>
 </html>

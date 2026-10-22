@@ -1,0 +1,14 @@
+<Layouts.app flash={@flash} current_scope={@current_scope}>
+  <.header>
+    {@page_title}
+  </.header>
+
+  <.movement_form
+    form={@form}
+    action={~p"/movement"}
+    categories_options={@categories_options}
+    payment_method_options={@payment_method_options}
+    type_options={@type_options}
+    cancel_path={~p"/movement"}
+  />
+</Layouts.app>

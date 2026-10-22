@@ -1,0 +1,85 @@
+<Layouts.app flash={@flash} current_scope={@current_scope}>
+  <%!-- Navegação de mês --%>
+  <div class="flex items-center justify-between gap-2">
+    <.link
+      id="previous-month"
+      href={~p"/?m=#{@previous_date.month}&y=#{@previous_date.year}"}
+      class="btn btn-ghost btn-sm"
+    >
+      <.icon name="hero-arrow-left" />
+      <span class="hidden sm:inline">{@previous_date.month_string}/{@previous_date.year}</span>
+    </.link>
+
+    <h1 class="text-center text-lg font-semibold capitalize">
+      {@current_date.month_string}
+      <span class="text-base-content/60">de {@current_date.year}</span>
+    </h1>
+
+    <.link
+      id="next-month"
+      href={~p"/?m=#{@next_date.month}&y=#{@next_date.year}"}
+      class="btn btn-ghost btn-sm"
+    >
+      <span class="hidden sm:inline">{@next_date.month_string}/{@next_date.year}</span>
+      <.icon name="hero-arrow-right" />
+    </.link>
+  </div>
+
+  <%!-- Total do mês --%>
+  <div class="rounded-box bg-primary text-primary-content p-5 shadow-sm">
+    <p class="text-sm opacity-80">Total movimentado</p>
+    <p class="mt-1 text-3xl font-bold tabular-nums">{@grand_total}</p>
+    <p class="mt-1 text-sm opacity-80">
+      Movimentações: {@current_date.month_string} de {@current_date.year}
+      · {length(@sections)} {if(length(@sections) == 1, do: "seção", else: "seções")}
+    </p>
+  </div>
+
+  <%!-- Estado vazio --%>
+  <div
+    :if={@sections == []}
+    class="rounded-box border border-dashed border-base-300 py-12 text-center"
+  >
+    <.icon name="hero-banknotes" class="mx-auto size-10 text-base-content/40" />
+    <p class="mt-2 font-medium">Nenhuma movimentação em {@current_date.month_string}</p>
+    <p class="text-sm text-base-content/60">
+      Cadastre movimentações para ver o resumo do mês aqui.
+    </p>
+    <.button variant="primary" href={~p"/movement/new"} class="mt-4">
+      <.icon name="hero-plus" /> Nova movimentação
+    </.button>
+  </div>
+
+  <%!-- Seções --%>
+  <div class="space-y-4">
+    <%= for section <- @sections do %>
+      <section class="rounded-box border border-base-300 bg-base-100 overflow-hidden">
+        <header class="flex items-center justify-between gap-3 bg-base-200 px-4 py-3">
+          <div class="flex items-center gap-2">
+            <h2 class="font-semibold">{section.section_name}</h2>
+            <span class="badge badge-sm badge-ghost">{section.count}</span>
+          </div>
+          <span class="font-semibold tabular-nums">{section.total_amount}</span>
+        </header>
+
+        <ul class="divide-y divide-base-200">
+          <%= for category <- section.categories do %>
+            <li class="px-4 py-3">
+              <div class="flex items-center justify-between gap-3">
+                <span>{category.category}</span>
+                <span class="font-medium tabular-nums">{category.formatted_amount}</span>
+              </div>
+              <div class="mt-2 h-1.5 w-full overflow-hidden rounded-full bg-base-300">
+                <div
+                  class="h-full rounded-full bg-primary"
+                  style={"width: #{bar_width(category.amount, section.total)}"}
+                >
+                </div>
+              </div>
+            </li>
+          <% end %>
+        </ul>
+      </section>
+    <% end %>
+  </div>
+</Layouts.app>

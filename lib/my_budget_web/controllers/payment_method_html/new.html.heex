@@ -1,0 +1,12 @@
+<Layouts.app flash={@flash} current_scope={@current_scope}>
+  <.header>
+    {@page_title}
+    <:subtitle>Preencha os dados abaixo para cadastrar um novo método de pagamento.</:subtitle>
+  </.header>
+
+  <.payment_method_form
+    form={@form}
+    action={~p"/payment_method"}
+    cancel_path={~p"/payment_method"}
+  />
+</Layouts.app>

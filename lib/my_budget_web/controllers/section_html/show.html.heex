@@ -1,0 +1,17 @@
+<Layouts.app flash={@flash} current_scope={@current_scope}>
+  <.header>
+    Sessão {@section.id}
+    <:actions>
+      <.button href={~p"/section"}>
+        <.icon name="hero-arrow-left" />
+      </.button>
+      <.button variant="primary" href={~p"/section/#{@section}/edit?return_to=show"}>
+        <.icon name="hero-pencil-square" /> Editar Sessão
+      </.button>
+    </:actions>
+  </.header>
+
+  <.list>
+    <:item title="Nome">{@section.name}</:item>
+  </.list>
+</Layouts.app>

@@ -1,0 +1,7 @@
+<Layouts.app flash={@flash} current_scope={@current_scope}>
+  <.header>
+    {@page_title}
+  </.header>
+
+  <.section_form form={@form} action={~p"/section"} cancel_path={~p"/section"} />
+</Layouts.app>

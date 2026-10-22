@@ -1,0 +1,23 @@
+<Layouts.app flash={@flash} current_scope={@current_scope}>
+  <.header>
+    Movement {@movement.id}
+    <:subtitle>This is a movement record from your database.</:subtitle>
+    <:actions>
+      <.button href={~p"/movement"}>
+        <.icon name="hero-arrow-left" />
+      </.button>
+      <.button variant="primary" href={~p"/movement/#{@movement}/edit?return_to=show"}>
+        <.icon name="hero-pencil-square" /> Edit movement
+      </.button>
+    </:actions>
+  </.header>
+
+  <.list>
+    <:item title="Amount">{@movement.amount}</:item>
+    <:item title="Description">{@movement.description}</:item>
+    <:item title="Counter party">{@movement.counter_party}</:item>
+    <:item title="Type">
+      <span class={movement_type_class(@movement.type)}>{movement_type_label(@movement.type)}</span>
+    </:item>
+  </.list>
+</Layouts.app>

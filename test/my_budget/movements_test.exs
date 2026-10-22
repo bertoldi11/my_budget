@@ -9,15 +9,15 @@ defmodule MyBudget.MovementsTest do
     import MyBudget.AccountsFixtures, only: [user_scope_fixture: 0]
     import MyBudget.MovementsFixtures
 
-    @invalid_attrs %{total_budget: nil, total_expend: nil}
+    @invalid_attrs %{name: nil, section_id: nil}
 
     test "list_category/1 returns all scoped category" do
       scope = user_scope_fixture()
       other_scope = user_scope_fixture()
       category = category_fixture(scope)
       other_category = category_fixture(other_scope)
-      assert Movements.list_category(scope) == [category]
-      assert Movements.list_category(other_scope) == [other_category]
+      assert Enum.map(Movements.list_category(scope), & &1.id) == [category.id]
+      assert Enum.map(Movements.list_category(other_scope), & &1.id) == [other_category.id]
     end
 
     test "get_category!/2 returns the category with given id" do
@@ -32,12 +32,13 @@ defmodule MyBudget.MovementsTest do
     end
 
     test "create_category/2 with valid data creates a category" do
-      valid_attrs = %{total_budget: 42, total_expend: 42}
       scope = user_scope_fixture()
+      section = section_fixture(scope)
+      valid_attrs = %{name: "some name", section_id: section.id}
 
       assert {:ok, %Category{} = category} = Movements.create_category(scope, valid_attrs)
-      assert category.total_budget == 42
-      assert category.total_expend == 42
+      assert category.name == "some name"
+      assert category.section_id == section.id
       assert category.user_id == scope.user.id
     end
 
@@ -49,13 +50,12 @@ defmodule MyBudget.MovementsTest do
     test "update_category/3 with valid data updates the category" do
       scope = user_scope_fixture()
       category = category_fixture(scope)
-      update_attrs = %{total_budget: 43, total_expend: 43}
+      update_attrs = %{name: "some updated name"}
 
       assert {:ok, %Category{} = category} =
                Movements.update_category(scope, category, update_attrs)
 
-      assert category.total_budget == 43
-      assert category.total_expend == 43
+      assert category.name == "some updated name"
     end
 
     test "update_category/3 with invalid scope raises" do
@@ -201,105 +201,6 @@ defmodule MyBudget.MovementsTest do
     end
   end
 
-  describe "sub_category" do
-    alias MyBudget.Movements.SubCategory
-
-    import MyBudget.AccountsFixtures, only: [user_scope_fixture: 0]
-    import MyBudget.MovementsFixtures
-
-    @invalid_attrs %{name: nil}
-
-    test "list_sub_category/1 returns all scoped sub_category" do
-      scope = user_scope_fixture()
-      other_scope = user_scope_fixture()
-      sub_category = sub_category_fixture(scope)
-      other_sub_category = sub_category_fixture(other_scope)
-      assert Movements.list_sub_category(scope) == [sub_category]
-      assert Movements.list_sub_category(other_scope) == [other_sub_category]
-    end
-
-    test "get_sub_category!/2 returns the sub_category with given id" do
-      scope = user_scope_fixture()
-      sub_category = sub_category_fixture(scope)
-      other_scope = user_scope_fixture()
-      assert Movements.get_sub_category!(scope, sub_category.id) == sub_category
-
-      assert_raise Ecto.NoResultsError, fn ->
-        Movements.get_sub_category!(other_scope, sub_category.id)
-      end
-    end
-
-    test "create_sub_category/2 with valid data creates a sub_category" do
-      valid_attrs = %{name: "some name"}
-      scope = user_scope_fixture()
-
-      assert {:ok, %SubCategory{} = sub_category} =
-               Movements.create_sub_category(scope, valid_attrs)
-
-      assert sub_category.name == "some name"
-      assert sub_category.user_id == scope.user.id
-    end
-
-    test "create_sub_category/2 with invalid data returns error changeset" do
-      scope = user_scope_fixture()
-      assert {:error, %Ecto.Changeset{}} = Movements.create_sub_category(scope, @invalid_attrs)
-    end
-
-    test "update_sub_category/3 with valid data updates the sub_category" do
-      scope = user_scope_fixture()
-      sub_category = sub_category_fixture(scope)
-      update_attrs = %{name: "some updated name"}
-
-      assert {:ok, %SubCategory{} = sub_category} =
-               Movements.update_sub_category(scope, sub_category, update_attrs)
-
-      assert sub_category.name == "some updated name"
-    end
-
-    test "update_sub_category/3 with invalid scope raises" do
-      scope = user_scope_fixture()
-      other_scope = user_scope_fixture()
-      sub_category = sub_category_fixture(scope)
-
-      assert_raise MatchError, fn ->
-        Movements.update_sub_category(other_scope, sub_category, %{})
-      end
-    end
-
-    test "update_sub_category/3 with invalid data returns error changeset" do
-      scope = user_scope_fixture()
-      sub_category = sub_category_fixture(scope)
-
-      assert {:error, %Ecto.Changeset{}} =
-               Movements.update_sub_category(scope, sub_category, @invalid_attrs)
-
-      assert sub_category == Movements.get_sub_category!(scope, sub_category.id)
-    end
-
-    test "delete_sub_category/2 deletes the sub_category" do
-      scope = user_scope_fixture()
-      sub_category = sub_category_fixture(scope)
-      assert {:ok, %SubCategory{}} = Movements.delete_sub_category(scope, sub_category)
-
-      assert_raise Ecto.NoResultsError, fn ->
-        Movements.get_sub_category!(scope, sub_category.id)
-      end
-    end
-
-    test "delete_sub_category/2 with invalid scope raises" do
-      scope = user_scope_fixture()
-      other_scope = user_scope_fixture()
-      sub_category = sub_category_fixture(scope)
-      assert_raise MatchError, fn -> Movements.delete_sub_category(other_scope, sub_category) end
-    end
-
-    test "change_sub_category/2 returns a sub_category changeset" do
-      scope = user_scope_fixture()
-      sub_category = sub_category_fixture(scope)
-      assert %Ecto.Changeset{} = Movements.change_sub_category(scope, sub_category)
-    end
-  end
-
   describe "movement" do
     alias MyBudget.Movements.Movement
 
@@ -313,8 +214,8 @@ defmodule MyBudget.MovementsTest do
       other_scope = user_scope_fixture()
       movement = movement_fixture(scope)
       other_movement = movement_fixture(other_scope)
-      assert Movements.list_movement(scope) == [movement]
-      assert Movements.list_movement(other_scope) == [other_movement]
+      assert Enum.map(Movements.list_movement(scope), & &1.id) == [movement.id]
+      assert Enum.map(Movements.list_movement(other_scope), & &1.id) == [other_movement.id]
     end
 
     test "get_movement!/2 returns the movement with given id" do
@@ -329,14 +230,17 @@ defmodule MyBudget.MovementsTest do
     end
 
     test "create_movement/2 with valid data creates a movement" do
+      scope = user_scope_fixture()
+
       valid_attrs = %{
         type: "some type",
         description: "some description",
         amount: 42,
-        counter_party: "some counter_party"
+        counter_party: "some counter_party",
+        expend_date: ~D[2026-10-15],
+        category_id: category_fixture(scope).id,
+        payment_method_id: payment_method_fixture(scope).id
       }
-
-      scope = user_scope_fixture()
 
       assert {:ok, %Movement{} = movement} = Movements.create_movement(scope, valid_attrs)
       assert movement.type == "some type"

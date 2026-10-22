@@ -6,7 +6,7 @@ defmodule MyBudgetWeb.Router do
   pipeline :browser do
     plug :accepts, ["html"]
     plug :fetch_session
-    plug :fetch_live_flash
+    plug :fetch_flash
     plug :put_root_layout, html: {MyBudgetWeb.Layouts, :root}
     plug :protect_from_forgery
     plug :put_secure_browser_headers
@@ -15,15 +15,6 @@ defmodule MyBudgetWeb.Router do
 
   pipeline :api do
     plug :accepts, ["json"]
-  end
-
-  scope "/", MyBudgetWeb do
-    pipe_through :browser
-
-    live_session :home_session,
-      on_mount: [{MyBudgetWeb.UserAuth, :require_authenticated}] do
-      live "/", HomeLive.Index, :edit
-    end
   end
 
   # Other scopes may use custom stacks.
@@ -51,61 +42,39 @@ defmodule MyBudgetWeb.Router do
   ## Authentication routes
 
   scope "/", MyBudgetWeb do
+    pipe_through [:browser, :redirect_if_user_is_authenticated]
+
+    get "/users/register", UserRegistrationController, :new
+    post "/users/register", UserRegistrationController, :create
+  end
+
+  scope "/", MyBudgetWeb do
     pipe_through [:browser, :require_authenticated_user]
 
-    live_session :require_authenticated_user,
-      on_mount: [{MyBudgetWeb.UserAuth, :require_authenticated}] do
-      live "/users/settings", UserLive.Settings, :edit
-      live "/users/settings/confirm-email/:token", UserLive.Settings, :confirm_email
-    end
-
-    post "/users/update-password", UserSessionController, :update_password
+    get "/users/settings", UserSettingsController, :edit
+    put "/users/settings", UserSettingsController, :update
+    get "/users/settings/confirm-email/:token", UserSettingsController, :confirm_email
   end
 
   scope "/", MyBudgetWeb do
     pipe_through [:browser]
 
-    live_session :current_user,
-      on_mount: [{MyBudgetWeb.UserAuth, :mount_current_scope}] do
-      live "/users/register", UserLive.Registration, :new
-      live "/users/log-in", UserLive.Login, :new
-      live "/users/log-in/:token", UserLive.Confirmation, :new
-    end
-
+    get "/users/log-in", UserSessionController, :new
+    get "/users/log-in/:token", UserSessionController, :confirm
     post "/users/log-in", UserSessionController, :create
     delete "/users/log-out", UserSessionController, :delete
   end
 
-  ## Movement 
+  ## Movement
 
   scope "/", MyBudgetWeb do
     pipe_through [:browser, :require_authenticated_user]
 
-    live_session :require_authenticated_app,
-      on_mount: [{MyBudgetWeb.UserAuth, :require_authenticated}] do
-      # Category
-      live "/category", CategoryLive.Index, :index
-      live "/category/new", CategoryLive.Form, :new
-      live "/category/:id", CategoryLive.Show, :show
-      live "/category/:id/edit", CategoryLive.Form, :edit
+    get "/", HomeController, :index
 
-      # Payment Method
-      live "/payment_method", PaymentMethodLive.Index, :index
-      live "/payment_method/new", PaymentMethodLive.Form, :new
-      live "/payment_method/:id", PaymentMethodLive.Show, :show
-      live "/payment_method/:id/edit", PaymentMethodLive.Form, :edit
-
-      # Section 
-      live "/section", SectionLive.Index, :index
-      live "/section/new", SectionLive.Form, :new
-      live "/section/:id", SectionLive.Show, :show
-      live "/section/:id/edit", SectionLive.Form, :edit
-
-      # Movement
-      live "/movement", MovementLive.Index, :index
-      live "/movement/new", MovementLive.Form, :new
-      live "/movement/:id", MovementLive.Show, :show
-      live "/movement/:id/edit", MovementLive.Form, :edit
-    end
+    resources "/category", CategoryController
+    resources "/payment_method", PaymentMethodController
+    resources "/section", SectionController
+    resources "/movement", MovementController
   end
 end

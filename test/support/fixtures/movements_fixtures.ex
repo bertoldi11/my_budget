@@ -5,13 +5,26 @@ defmodule MyBudget.MovementsFixtures do
   """
 
   @doc """
+  Generate a section.
+  """
+  def section_fixture(scope, attrs \\ %{}) do
+    attrs =
+      Enum.into(attrs, %{
+        name: "some section"
+      })
+
+    {:ok, section} = MyBudget.Movements.create_section(scope, attrs)
+    section
+  end
+
+  @doc """
   Generate a category.
   """
   def category_fixture(scope, attrs \\ %{}) do
     attrs =
       Enum.into(attrs, %{
-        total_budget: 42,
-        total_expend: 42
+        name: "some category",
+        section_id: Map.get_lazy(attrs, :section_id, fn -> section_fixture(scope).id end)
       })
 
     {:ok, category} = MyBudget.Movements.create_category(scope, attrs)
@@ -32,28 +45,19 @@ defmodule MyBudget.MovementsFixtures do
   end
 
   @doc """
-  Generate a sub_category.
-  """
-  def sub_category_fixture(scope, attrs \\ %{}) do
-    attrs =
-      Enum.into(attrs, %{
-        name: "some name"
-      })
-
-    {:ok, sub_category} = MyBudget.Movements.create_sub_category(scope, attrs)
-    sub_category
-  end
-
-  @doc """
   Generate a movement.
   """
   def movement_fixture(scope, attrs \\ %{}) do
     attrs =
       Enum.into(attrs, %{
-        amount: 42,
+        amount: 4200,
         counter_party: "some counter_party",
         description: "some description",
-        type: "some type"
+        type: "debit",
+        expend_date: ~D[2026-10-15],
+        category_id: Map.get_lazy(attrs, :category_id, fn -> category_fixture(scope).id end),
+        payment_method_id:
+          Map.get_lazy(attrs, :payment_method_id, fn -> payment_method_fixture(scope).id end)
       })
 
     {:ok, movement} = MyBudget.Movements.create_movement(scope, attrs)

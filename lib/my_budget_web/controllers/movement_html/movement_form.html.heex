@@ -1,0 +1,24 @@
+<.form for={@form} id="movement-form" action={@action}>
+  <input type="hidden" name="return_to" value={@return_to} />
+  <.input
+    field={@form[:category_id]}
+    type="select"
+    label="Categoria"
+    options={@categories_options}
+  />
+  <.input
+    field={@form[:payment_method_id]}
+    type="select"
+    label="Pago com"
+    options={@payment_method_options}
+  />
+  <.input field={@form[:expend_date]} type="date" label="Date" />
+  <.input field={@form[:type]} type="select" label="Tipo" options={@type_options} />
+  <.input field={@form[:amount]} type="number" label="Valor" />
+  <.input field={@form[:description]} type="text" label="Descrição" />
+  <.input field={@form[:counter_party]} type="text" label="Pago a/Recebido de" />
+  <footer>
+    <.button phx-disable-with="Processando..." variant="primary">Salvar</.button>
+    <.button href={@cancel_path}>Cancelar</.button>
+  </footer>
+</.form>
