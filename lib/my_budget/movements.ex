@@ -503,6 +503,18 @@ defmodule MyBudget.Movements do
   end
 
   @doc """
+  Gets a single movement with its `:category` and `:payment_method`
+  associations preloaded.
+
+  Raises `Ecto.NoResultsError` if the Movement does not exist.
+  """
+  def get_movement_with_associations!(%Scope{} = scope, id) do
+    scope
+    |> get_movement!(id)
+    |> Repo.preload([:category, :payment_method])
+  end
+
+  @doc """
   Creates a movement.
 
   ## Examples
@@ -582,6 +594,8 @@ defmodule MyBudget.Movements do
   def change_movement(%Scope{} = scope, %Movement{} = movement, attrs \\ %{}) do
     true = movement.user_id == scope.user.id
 
-    Movement.changeset(movement, attrs, scope)
+    movement
+    |> Movement.changeset(attrs, scope)
+    |> Movement.put_amount_reais_display()
   end
 end

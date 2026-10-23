@@ -74,7 +74,7 @@ defmodule MyBudgetWeb.MovementControllerTest do
 
     test "displays movement", %{conn: conn, movement: movement} do
       conn = get(conn, ~p"/movement/#{movement}")
-      assert html_response(conn, 200) =~ "Movement #{movement.id}"
+      assert html_response(conn, 200) =~ "Movimentação #{movement.id}"
     end
   end
 

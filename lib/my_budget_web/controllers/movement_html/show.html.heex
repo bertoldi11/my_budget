@@ -1,23 +1,32 @@
 <Layouts.app flash={@flash} current_scope={@current_scope}>
   <.header>
-    Movement {@movement.id}
-    <:subtitle>This is a movement record from your database.</:subtitle>
+    Movimentação {@movement.id}
+    <:subtitle>Detalhes do lançamento.</:subtitle>
     <:actions>
-      <.button href={~p"/movement"}>
+      <.button href={~p"/movement"} class="btn btn-ghost">
         <.icon name="hero-arrow-left" />
       </.button>
       <.button variant="primary" href={~p"/movement/#{@movement}/edit?return_to=show"}>
-        <.icon name="hero-pencil-square" /> Edit movement
+        <.icon name="hero-pencil-square" /> Editar
       </.button>
     </:actions>
   </.header>
 
-  <.list>
-    <:item title="Amount">{@movement.amount}</:item>
-    <:item title="Description">{@movement.description}</:item>
-    <:item title="Counter party">{@movement.counter_party}</:item>
-    <:item title="Type">
-      <span class={movement_type_class(@movement.type)}>{movement_type_label(@movement.type)}</span>
-    </:item>
-  </.list>
+  <div class="rounded-box border border-base-300 bg-base-100 p-2">
+    <.list>
+      <:item title="Categoria">{@movement.category.name}</:item>
+      <:item title="Data">{format_date(@movement.expend_date)}</:item>
+      <:item title="Pago com">{@movement.payment_method.name}</:item>
+      <:item title="Valor">
+        <span class={movement_type_class(@movement.type)}>{format_amount(@movement.amount)}</span>
+      </:item>
+      <:item title="Tipo">
+        <span class={movement_type_class(@movement.type)}>
+          {movement_type_label(@movement.type)}
+        </span>
+      </:item>
+      <:item title="Descrição">{@movement.description}</:item>
+      <:item title="Pago a/Recebido de">{@movement.counter_party}</:item>
+    </.list>
+  </div>
 </Layouts.app>

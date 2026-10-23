@@ -1,11 +1,11 @@
 <Layouts.app flash={@flash} current_scope={@current_scope}>
-  <div class="mx-auto max-w-sm">
+  <div class="mx-auto max-w-sm space-y-4">
     <div class="text-center">
       <.header>
         Faça seu cadastro
         <:subtitle>
           Já é cadastrado?
-          <.link href={~p"/users/log-in"} class="font-semibold text-brand hover:underline">
+          <.link href={~p"/users/log-in"} class="font-semibold text-primary hover:underline">
             Entre
           </.link>
           na sua conta!
@@ -13,26 +13,28 @@
       </.header>
     </div>
 
-    <.form for={@form} id="registration_form" action={~p"/users/register"}>
-      <.input
-        field={@form[:email]}
-        type="email"
-        label="Email"
-        autocomplete="username"
-        required
-        phx-mounted={JS.focus()}
-      />
-      <.input
-        field={@form[:password]}
-        type="password"
-        label="Senha"
-        autocomplete="false"
-        required
-      />
+    <div class="rounded-box border border-base-300 bg-base-100 p-6">
+      <.form for={@form} id="registration_form" action={~p"/users/register"}>
+        <.input
+          field={@form[:email]}
+          type="email"
+          label="Email"
+          autocomplete="username"
+          required
+          phx-mounted={JS.focus()}
+        />
+        <.input
+          field={@form[:password]}
+          type="password"
+          label="Senha"
+          autocomplete="false"
+          required
+        />
 
-      <.button phx-disable-with="Processando..." class="btn btn-primary w-full">
-        Cadastrar
-      </.button>
-    </.form>
+        <.button phx-disable-with="Processando..." class="btn btn-primary w-full mt-2">
+          Cadastrar
+        </.button>
+      </.form>
+    </div>
   </div>
 </Layouts.app>

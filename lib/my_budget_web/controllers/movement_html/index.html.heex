@@ -43,7 +43,10 @@
             {format_date(movement.expend_date)} · {movement.payment_method.name}
             <span :if={movement.counter_party not in [nil, ""]}>· {movement.counter_party}</span>
           </p>
-          <p :if={movement.description not in [nil, ""]} class="truncate text-sm text-base-content/50">
+          <p
+            :if={movement.description not in [nil, ""]}
+            class="truncate text-sm text-base-content/50"
+          >
             {movement.description}
           </p>
         </div>

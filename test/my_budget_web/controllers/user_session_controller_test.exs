@@ -12,7 +12,7 @@ defmodule MyBudgetWeb.UserSessionControllerTest do
     test "renders login page", %{conn: conn} do
       conn = get(conn, ~p"/users/log-in")
       response = html_response(conn, 200)
-      assert response =~ "Log in"
+      assert response =~ "Entrar"
       assert response =~ ~p"/users/register"
     end
 
@@ -23,8 +23,8 @@ defmodule MyBudgetWeb.UserSessionControllerTest do
         |> get(~p"/users/log-in")
         |> html_response(200)
 
-      assert html =~ "You need to reauthenticate"
-      refute html =~ "Sign up"
+      assert html =~ "Você precisa se autenticar novamente"
+      refute html =~ "Cadastre-se"
       assert html =~ ~s(value="#{user.email}")
     end
   end
@@ -37,7 +37,7 @@ defmodule MyBudgetWeb.UserSessionControllerTest do
         end)
 
       conn = get(conn, ~p"/users/log-in/#{token}")
-      assert html_response(conn, 200) =~ "Confirm and stay logged in"
+      assert html_response(conn, 200) =~ "Confirmar e permanecer conectado"
     end
 
     test "renders login page for confirmed user", %{conn: conn, user: user} do
@@ -48,8 +48,8 @@ defmodule MyBudgetWeb.UserSessionControllerTest do
 
       conn = get(conn, ~p"/users/log-in/#{token}")
       html = html_response(conn, 200)
-      refute html =~ "Confirm my account"
-      assert html =~ "Keep me logged in on this device"
+      refute html =~ "Confirmar e permanecer conectado"
+      assert html =~ "Manter conectado neste dispositivo"
     end
 
     test "raises error for invalid token", %{conn: conn} do
@@ -57,7 +57,7 @@ defmodule MyBudgetWeb.UserSessionControllerTest do
       assert redirected_to(conn) == ~p"/users/log-in"
 
       assert Phoenix.Flash.get(conn.assigns.flash, :error) ==
-               "Magic link is invalid or it has expired."
+               "O link mágico é inválido ou expirou."
     end
   end
 
@@ -111,7 +111,7 @@ defmodule MyBudgetWeb.UserSessionControllerTest do
         })
 
       assert redirected_to(conn) == "/foo/bar"
-      assert Phoenix.Flash.get(conn.assigns.flash, :info) =~ "Welcome back!"
+      assert Phoenix.Flash.get(conn.assigns.flash, :info) =~ "Bem-vindo(a) de volta!"
     end
 
     test "emits error message with invalid credentials", %{conn: conn, user: user} do
@@ -121,8 +121,8 @@ defmodule MyBudgetWeb.UserSessionControllerTest do
         })
 
       response = html_response(conn, 200)
-      assert response =~ "Log in"
-      assert response =~ "Invalid email or password"
+      assert response =~ "Entrar"
+      assert response =~ "E-mail ou senha inválidos"
     end
   end
 
@@ -133,7 +133,9 @@ defmodule MyBudgetWeb.UserSessionControllerTest do
           "user" => %{"email" => user.email}
         })
 
-      assert Phoenix.Flash.get(conn.assigns.flash, :info) =~ "If your email is in our system"
+      assert Phoenix.Flash.get(conn.assigns.flash, :info) =~
+               "Se o seu e-mail estiver no nosso sistema"
+
       assert MyBudget.Repo.get_by!(Accounts.UserToken, user_id: user.id).context == "login"
     end
 
@@ -163,7 +165,7 @@ defmodule MyBudgetWeb.UserSessionControllerTest do
         })
 
       assert Phoenix.Flash.get(conn.assigns.flash, :error) ==
-               "The link is invalid or it has expired."
+               "O link é inválido ou expirou."
 
       assert redirected_to(conn) == ~p"/users/log-in"
     end
@@ -174,14 +176,14 @@ defmodule MyBudgetWeb.UserSessionControllerTest do
       conn = conn |> log_in_user(user) |> delete(~p"/users/log-out")
       assert redirected_to(conn) == ~p"/"
       refute get_session(conn, :user_token)
-      assert Phoenix.Flash.get(conn.assigns.flash, :info) =~ "Logged out successfully"
+      assert Phoenix.Flash.get(conn.assigns.flash, :info) =~ "Sessão encerrada com sucesso"
     end
 
     test "succeeds even if the user is not logged in", %{conn: conn} do
       conn = delete(conn, ~p"/users/log-out")
       assert redirected_to(conn) == ~p"/"
       refute get_session(conn, :user_token)
-      assert Phoenix.Flash.get(conn.assigns.flash, :info) =~ "Logged out successfully"
+      assert Phoenix.Flash.get(conn.assigns.flash, :info) =~ "Sessão encerrada com sucesso"
     end
   end
 end

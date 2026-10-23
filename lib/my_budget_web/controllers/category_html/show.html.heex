@@ -2,7 +2,7 @@
   <.header>
     Categoria {@category.id}
     <:actions>
-      <.button href={~p"/category"}>
+      <.button href={~p"/category"} class="btn btn-ghost">
         <.icon name="hero-arrow-left" />
       </.button>
       <.button variant="primary" href={~p"/category/#{@category}/edit?return_to=show"}>
@@ -11,7 +11,9 @@
     </:actions>
   </.header>
 
-  <.list>
-    <:item title="Name">{@category.name}</:item>
-  </.list>
+  <div class="rounded-box border border-base-300 bg-base-100 p-2">
+    <.list>
+      <:item title="Nome">{@category.name}</:item>
+    </.list>
+  </div>
 </Layouts.app>

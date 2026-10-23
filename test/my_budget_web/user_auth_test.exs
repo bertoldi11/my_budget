@@ -222,7 +222,7 @@ defmodule MyBudgetWeb.UserAuthTest do
       assert redirected_to(conn) == ~p"/users/log-in"
 
       assert Phoenix.Flash.get(conn.assigns.flash, :error) ==
-               "You must re-authenticate to access this page."
+               "Você precisa se autenticar novamente para acessar esta página."
     end
   end
 
@@ -260,7 +260,7 @@ defmodule MyBudgetWeb.UserAuthTest do
       assert redirected_to(conn) == ~p"/users/log-in"
 
       assert Phoenix.Flash.get(conn.assigns.flash, :error) ==
-               "You must log in to access this page."
+               "Você precisa entrar para acessar esta página."
     end
 
     test "stores the path to redirect to on GET", %{conn: conn} do

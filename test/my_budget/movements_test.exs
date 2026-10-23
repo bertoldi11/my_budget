@@ -255,6 +255,40 @@ defmodule MyBudget.MovementsTest do
       assert {:error, %Ecto.Changeset{}} = Movements.create_movement(scope, @invalid_attrs)
     end
 
+    test "create_movement/2 converts the amount in reais to cents" do
+      scope = user_scope_fixture()
+
+      attrs = %{
+        type: "debit",
+        description: "some description",
+        amount_reais: "1.234,56",
+        counter_party: "some counter_party",
+        expend_date: ~D[2026-10-15],
+        category_id: category_fixture(scope).id,
+        payment_method_id: payment_method_fixture(scope).id
+      }
+
+      assert {:ok, %Movement{} = movement} = Movements.create_movement(scope, attrs)
+      assert movement.amount == 123_456
+    end
+
+    test "create_movement/2 with a blank amount returns error on amount_reais" do
+      scope = user_scope_fixture()
+
+      attrs = %{
+        type: "debit",
+        description: "some description",
+        amount_reais: "",
+        counter_party: "some counter_party",
+        expend_date: ~D[2026-10-15],
+        category_id: category_fixture(scope).id,
+        payment_method_id: payment_method_fixture(scope).id
+      }
+
+      assert {:error, changeset} = Movements.create_movement(scope, attrs)
+      assert %{amount_reais: ["can't be blank"]} = errors_on(changeset)
+    end
+
     test "update_movement/3 with valid data updates the movement" do
       scope = user_scope_fixture()
       movement = movement_fixture(scope)

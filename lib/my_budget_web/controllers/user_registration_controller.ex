@@ -21,7 +21,7 @@ defmodule MyBudgetWeb.UserRegistrationController do
         conn
         |> put_flash(
           :info,
-          "An email was sent to #{user.email}, please access it to confirm your account."
+          "Um e-mail foi enviado para #{user.email}, acesse-o para confirmar sua conta."
         )
         |> redirect(to: ~p"/users/log-in")
 

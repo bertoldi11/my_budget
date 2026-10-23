@@ -33,7 +33,7 @@ defmodule MyBudgetWeb.UserRegistrationControllerTest do
       assert redirected_to(conn) == ~p"/users/log-in"
 
       assert conn.assigns.flash["info"] =~
-               ~r/An email was sent to .*, please access it to confirm your account/
+               ~r/Um e-mail foi enviado para .*, acesse-o para confirmar sua conta/
     end
 
     test "render errors for invalid data", %{conn: conn} do

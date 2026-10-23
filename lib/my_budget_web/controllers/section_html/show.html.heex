@@ -2,16 +2,18 @@
   <.header>
     Sessão {@section.id}
     <:actions>
-      <.button href={~p"/section"}>
+      <.button href={~p"/section"} class="btn btn-ghost">
         <.icon name="hero-arrow-left" />
       </.button>
       <.button variant="primary" href={~p"/section/#{@section}/edit?return_to=show"}>
-        <.icon name="hero-pencil-square" /> Editar Sessão
+        <.icon name="hero-pencil-square" /> Editar
       </.button>
     </:actions>
   </.header>
 
-  <.list>
-    <:item title="Nome">{@section.name}</:item>
-  </.list>
+  <div class="rounded-box border border-base-300 bg-base-100 p-2">
+    <.list>
+      <:item title="Nome">{@section.name}</:item>
+    </.list>
+  </div>
 </Layouts.app>

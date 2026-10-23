@@ -40,6 +40,34 @@ window.addEventListener("phx:page-loading-stop", _info => topbar.hide())
 // connect if there are any LiveViews on the page
 liveSocket.connect()
 
+// Máscara de moeda (R$): trata os dígitos digitados como centavos e exibe o
+// valor formatado em reais (ex.: "1.234,56"). O servidor recebe esse texto e o
+// contexto converte de volta para centavos ao salvar.
+function formatCentsToBRL(digits) {
+  const cents = parseInt(digits || "0", 10)
+  return (cents / 100).toLocaleString("pt-BR", {
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
+  })
+}
+
+function initCurrencyMasks() {
+  document.querySelectorAll("[data-currency-mask]").forEach(el => {
+    if (el.dataset.currencyMaskInit) return
+    el.dataset.currencyMaskInit = "1"
+
+    const apply = () => {
+      const digits = el.value.replace(/\D/g, "")
+      el.value = digits ? formatCentsToBRL(digits) : ""
+    }
+
+    apply()
+    el.addEventListener("input", apply)
+  })
+}
+
+document.addEventListener("DOMContentLoaded", initCurrencyMasks)
+
 // expose liveSocket on window for web console debug logs and latency simulation:
 // >> liveSocket.enableDebug()
 // >> liveSocket.enableLatencySim(1000)  // enabled for duration of browser session

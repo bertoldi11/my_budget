@@ -30,7 +30,7 @@ defmodule MyBudgetWeb.MovementController do
   end
 
   def show(conn, %{"id" => id}) do
-    movement = Movements.get_movement!(conn.assigns.current_scope, id)
+    movement = Movements.get_movement_with_associations!(conn.assigns.current_scope, id)
 
     render(conn, :show, page_title: "Movimentação", movement: movement)
   end

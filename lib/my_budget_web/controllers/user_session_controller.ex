@@ -18,8 +18,8 @@ defmodule MyBudgetWeb.UserSessionController do
   def create(conn, %{"user" => %{"token" => token} = user_params} = params) do
     info =
       case params do
-        %{"_action" => "confirmed"} -> "User confirmed successfully."
-        _ -> "Welcome back!"
+        %{"_action" => "confirmed"} -> "Conta confirmada com sucesso!"
+        _ -> "Bem-vindo(a) de volta!"
       end
 
     case Accounts.login_user_by_magic_link(token) do
@@ -30,7 +30,7 @@ defmodule MyBudgetWeb.UserSessionController do
 
       _ ->
         conn
-        |> put_flash(:error, "The link is invalid or it has expired.")
+        |> put_flash(:error, "O link é inválido ou expirou.")
         |> redirect(to: ~p"/users/log-in")
     end
   end
@@ -39,14 +39,14 @@ defmodule MyBudgetWeb.UserSessionController do
   def create(conn, %{"user" => %{"email" => email, "password" => password} = user_params}) do
     if user = Accounts.get_user_by_email_and_password(email, password) do
       conn
-      |> put_flash(:info, "Welcome back!")
+      |> put_flash(:info, "Bem-vindo(a) de volta!")
       |> UserAuth.log_in_user(user, user_params)
     else
       form = to_form(%{"email" => String.slice(email, 0, 160)}, as: "user")
 
       # In order to prevent user enumeration attacks, don't disclose whether the email is registered.
       conn
-      |> put_flash(:error, "Invalid email or password")
+      |> put_flash(:error, "E-mail ou senha inválidos")
       |> render(:new, form: form)
     end
   end
@@ -61,7 +61,7 @@ defmodule MyBudgetWeb.UserSessionController do
     end
 
     info =
-      "If your email is in our system, you will receive instructions for logging in shortly."
+      "Se o seu e-mail estiver no nosso sistema, você receberá em instantes as instruções para entrar."
 
     conn
     |> put_flash(:info, info)
@@ -78,14 +78,14 @@ defmodule MyBudgetWeb.UserSessionController do
       |> render(:confirm)
     else
       conn
-      |> put_flash(:error, "Magic link is invalid or it has expired.")
+      |> put_flash(:error, "O link mágico é inválido ou expirou.")
       |> redirect(to: ~p"/users/log-in")
     end
   end
 
   def delete(conn, _params) do
     conn
-    |> put_flash(:info, "Logged out successfully.")
+    |> put_flash(:info, "Sessão encerrada com sucesso.")
     |> UserAuth.log_out_user()
   end
 end

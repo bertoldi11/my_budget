@@ -2,7 +2,7 @@
   <.header>
     Método de Pagamento: {@payment_method.id}
     <:actions>
-      <.button href={~p"/payment_method"}>
+      <.button href={~p"/payment_method"} class="btn btn-ghost">
         <.icon name="hero-arrow-left" />
       </.button>
       <.button variant="primary" href={~p"/payment_method/#{@payment_method}/edit?return_to=show"}>
@@ -11,7 +11,9 @@
     </:actions>
   </.header>
 
-  <.list>
-    <:item title="Name">{@payment_method.name}</:item>
-  </.list>
+  <div class="rounded-box border border-base-300 bg-base-100 p-2">
+    <.list>
+      <:item title="Nome">{@payment_method.name}</:item>
+    </.list>
+  </div>
 </Layouts.app>
