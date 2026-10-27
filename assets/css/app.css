@@ -2,6 +2,7 @@
    https://tailwindcss.com/docs/configuration */
 
 @import "tailwindcss" source(none);
+@import "../vendor/tom-select.css";
 @source "../css";
 @source "../js";
 @source "../../lib/my_budget_web";
@@ -103,3 +104,66 @@
 [data-phx-session], [data-phx-teleported-src] { display: contents }
 
 /* This file is for your main application CSS */
+
+/* Tom Select ajustado à paleta (daisyUI tokens, claro/escuro) */
+.ts-wrapper {
+  width: 100%;
+}
+
+.ts-control,
+.ts-wrapper.single .ts-control,
+.ts-wrapper.single.input-active .ts-control,
+.full .ts-control {
+  background-color: var(--color-base-100) !important;
+  color: var(--color-base-content);
+  border: var(--border) solid var(--color-base-300);
+  border-radius: var(--radius-field);
+  min-height: calc(var(--size-field, 0.21875rem) * 10);
+  align-items: center;
+  flex-wrap: nowrap;
+  padding-block: 0;
+  padding-inline: calc(0.25rem * 3);
+  font-size: 0.875rem;
+  line-height: 1.5;
+}
+
+/* Placeholder e item selecionado centralizados na mesma linha */
+.ts-wrapper.single .ts-control,
+.ts-wrapper.single .ts-control > input,
+.ts-wrapper.single .ts-control > .item {
+  height: calc(var(--size-field, 0.21875rem) * 10 - var(--border) * 2);
+  line-height: calc(var(--size-field, 0.21875rem) * 10 - var(--border) * 2);
+}
+
+.ts-control input,
+.ts-control .item {
+  color: var(--color-base-content) !important;
+  font-size: 0.875rem;
+}
+
+.ts-dropdown .option {
+  font-size: 0.875rem;
+}
+
+.ts-wrapper.focus .ts-control {
+  border-color: var(--color-primary);
+  outline: 2px solid color-mix(in oklch, var(--color-primary) 30%, transparent);
+  outline-offset: 1px;
+}
+
+.ts-dropdown,
+.ts-dropdown .optgroup-header {
+  background: var(--color-base-100) !important;
+  color: var(--color-base-content);
+  border-color: var(--color-base-300);
+}
+
+.ts-dropdown .option {
+  color: var(--color-base-content);
+}
+
+.ts-dropdown .option.active,
+.ts-dropdown .active {
+  background-color: var(--color-base-200) !important;
+  color: var(--color-base-content);
+}

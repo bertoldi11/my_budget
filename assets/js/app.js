@@ -24,6 +24,7 @@ import {Socket} from "phoenix"
 import {LiveSocket} from "phoenix_live_view"
 import {hooks as colocatedHooks} from "phoenix-colocated/my_budget"
 import topbar from "../vendor/topbar"
+import TomSelect from "../vendor/tom-select.complete.min.js"
 
 const csrfToken = document.querySelector("meta[name='csrf-token']").getAttribute("content")
 const liveSocket = new LiveSocket("/live", Socket, {
@@ -67,6 +68,25 @@ function initCurrencyMasks() {
 }
 
 document.addEventListener("DOMContentLoaded", initCurrencyMasks)
+
+// Autocomplete de seleção com Tom Select: aprimora um <select data-combobox>
+// num campo de busca. Sem JS, o <select> nativo continua funcionando.
+function initComboboxes() {
+  document.querySelectorAll("select[data-combobox]").forEach(select => {
+    if (select.dataset.comboboxInit) return
+    select.dataset.comboboxInit = "1"
+
+    new TomSelect(select, {
+      create: false,
+      // Mantém a ordem vinda do servidor (categorias agrupadas por sessão).
+      sortField: null,
+      maxOptions: null,
+      allowEmptyOption: true
+    })
+  })
+}
+
+document.addEventListener("DOMContentLoaded", initComboboxes)
 
 // expose liveSocket on window for web console debug logs and latency simulation:
 // >> liveSocket.enableDebug()

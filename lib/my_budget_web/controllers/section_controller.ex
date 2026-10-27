@@ -1,6 +1,8 @@
 defmodule MyBudgetWeb.SectionController do
   use MyBudgetWeb, :controller
 
+  action_fallback MyBudgetWeb.FallbackController
+
   alias MyBudget.Movements
   alias MyBudget.Movements.Section
 
@@ -18,14 +20,16 @@ defmodule MyBudgetWeb.SectionController do
   end
 
   def create(conn, %{"section" => section_params}) do
-    case Movements.create_section(conn.assigns.current_scope, section_params) do
-      {:ok, _section} ->
-        conn
-        |> put_flash(:info, "Sessão cadastrada com sucesso!")
-        |> redirect(to: ~p"/section")
+    scope = conn.assigns.current_scope
 
-      {:error, %Ecto.Changeset{} = changeset} ->
-        render(conn, :new, page_title: "Nova sessão", form: to_form(changeset))
+    conn = assign(conn, :page_title, "Nova sessão")
+
+    with {:ok, _section} <- Movements.create_section(scope, section_params) do
+      conn
+      |> put_flash(:info, "Sessão cadastrada com sucesso!")
+      |> redirect(to: ~p"/section")
+    else
+      error -> {conn, error}
     end
   end
 
@@ -52,30 +56,32 @@ defmodule MyBudgetWeb.SectionController do
     section = Movements.get_section!(scope, id)
     return_to = return_to(params["return_to"])
 
-    case Movements.update_section(scope, section, section_params) do
-      {:ok, section} ->
-        conn
-        |> put_flash(:info, "Sessão atualizada com sucesso!")
-        |> redirect(to: return_path(return_to, section))
+    conn =
+      conn
+      |> assign(:page_title, "Editar sessão")
+      |> assign(:section, section)
+      |> assign(:return_to, return_to)
 
-      {:error, %Ecto.Changeset{} = changeset} ->
-        render(conn, :edit,
-          page_title: "Editar sessão",
-          section: section,
-          return_to: return_to,
-          form: to_form(changeset)
-        )
+    with {:ok, updated_section} <- Movements.update_section(scope, section, section_params) do
+      conn
+      |> put_flash(:info, "Sessão atualizada com sucesso!")
+      |> redirect(to: return_path(return_to, updated_section))
+    else
+      error -> {conn, error}
     end
   end
 
   def delete(conn, %{"id" => id}) do
     scope = conn.assigns.current_scope
     section = Movements.get_section!(scope, id)
-    {:ok, _section} = Movements.delete_section(scope, section)
 
-    conn
-    |> put_flash(:info, "Sessão apagada com sucesso!")
-    |> redirect(to: ~p"/section")
+    with {:ok, _section} <- Movements.delete_section(scope, section) do
+      conn
+      |> put_flash(:info, "Sessão apagada com sucesso!")
+      |> redirect(to: ~p"/section")
+    else
+      error -> {conn, error}
+    end
   end
 
   defp return_to("show"), do: "show"

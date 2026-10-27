@@ -1,6 +1,8 @@
 defmodule MyBudgetWeb.PaymentMethodController do
   use MyBudgetWeb, :controller
 
+  action_fallback MyBudgetWeb.FallbackController
+
   alias MyBudget.Movements
   alias MyBudget.Movements.PaymentMethod
 
@@ -21,14 +23,16 @@ defmodule MyBudgetWeb.PaymentMethodController do
   end
 
   def create(conn, %{"payment_method" => payment_method_params}) do
-    case Movements.create_payment_method(conn.assigns.current_scope, payment_method_params) do
-      {:ok, _payment_method} ->
-        conn
-        |> put_flash(:info, "Método de pagamento cadastrado com sucesso!")
-        |> redirect(to: ~p"/payment_method")
+    scope = conn.assigns.current_scope
 
-      {:error, %Ecto.Changeset{} = changeset} ->
-        render(conn, :new, page_title: "Novo Método de Pagamento", form: to_form(changeset))
+    conn = assign(conn, :page_title, "Novo Método de Pagamento")
+
+    with {:ok, _payment_method} <- Movements.create_payment_method(scope, payment_method_params) do
+      conn
+      |> put_flash(:info, "Método de pagamento cadastrado com sucesso!")
+      |> redirect(to: ~p"/payment_method")
+    else
+      error -> {conn, error}
     end
   end
 
@@ -55,30 +59,33 @@ defmodule MyBudgetWeb.PaymentMethodController do
     payment_method = Movements.get_payment_method!(scope, id)
     return_to = return_to(params["return_to"])
 
-    case Movements.update_payment_method(scope, payment_method, payment_method_params) do
-      {:ok, payment_method} ->
-        conn
-        |> put_flash(:info, "Método de pagamento atualizado com sucesso!")
-        |> redirect(to: return_path(return_to, payment_method))
+    conn =
+      conn
+      |> assign(:page_title, "Editar Método de Pagamento")
+      |> assign(:payment_method, payment_method)
+      |> assign(:return_to, return_to)
 
-      {:error, %Ecto.Changeset{} = changeset} ->
-        render(conn, :edit,
-          page_title: "Editar Método de Pagamento",
-          payment_method: payment_method,
-          return_to: return_to,
-          form: to_form(changeset)
-        )
+    with {:ok, updated_payment_method} <-
+           Movements.update_payment_method(scope, payment_method, payment_method_params) do
+      conn
+      |> put_flash(:info, "Método de pagamento atualizado com sucesso!")
+      |> redirect(to: return_path(return_to, updated_payment_method))
+    else
+      error -> {conn, error}
     end
   end
 
   def delete(conn, %{"id" => id}) do
     scope = conn.assigns.current_scope
     payment_method = Movements.get_payment_method!(scope, id)
-    {:ok, _payment_method} = Movements.delete_payment_method(scope, payment_method)
 
-    conn
-    |> put_flash(:info, "Método de pagamento apagado com sucesso!")
-    |> redirect(to: ~p"/payment_method")
+    with {:ok, _payment_method} <- Movements.delete_payment_method(scope, payment_method) do
+      conn
+      |> put_flash(:info, "Método de pagamento apagado com sucesso!")
+      |> redirect(to: ~p"/payment_method")
+    else
+      error -> {conn, error}
+    end
   end
 
   defp return_to("show"), do: "show"

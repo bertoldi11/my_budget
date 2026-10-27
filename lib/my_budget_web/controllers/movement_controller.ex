@@ -1,6 +1,8 @@
 defmodule MyBudgetWeb.MovementController do
   use MyBudgetWeb, :controller
 
+  action_fallback MyBudgetWeb.FallbackController
+
   alias MyBudget.Movements
   alias MyBudget.Movements.Movement
 
@@ -18,14 +20,19 @@ defmodule MyBudgetWeb.MovementController do
   end
 
   def create(conn, %{"movement" => movement_params}) do
-    case Movements.create_movement(conn.assigns.current_scope, movement_params) do
-      {:ok, _movement} ->
-        conn
-        |> put_flash(:info, "Movimentação cadastrada com sucesso!")
-        |> redirect(to: ~p"/movement")
+    scope = conn.assigns.current_scope
 
-      {:error, %Ecto.Changeset{} = changeset} ->
-        render_new(conn, changeset)
+    conn =
+      conn
+      |> assign(:page_title, "Nova Movimentação")
+      |> assign_form_options()
+
+    with {:ok, _movement} <- Movements.create_movement(scope, movement_params) do
+      conn
+      |> put_flash(:info, "Movimentação cadastrada com sucesso!")
+      |> redirect(to: ~p"/movement")
+    else
+      error -> {conn, error}
     end
   end
 
@@ -48,25 +55,33 @@ defmodule MyBudgetWeb.MovementController do
     movement = Movements.get_movement!(scope, id)
     return_to = return_to(params["return_to"])
 
-    case Movements.update_movement(scope, movement, movement_params) do
-      {:ok, movement} ->
-        conn
-        |> put_flash(:info, "Movimentação atualizada com sucesso!")
-        |> redirect(to: return_path(return_to, movement))
+    conn =
+      conn
+      |> assign(:page_title, "Editar Movimentação")
+      |> assign(:movement, movement)
+      |> assign(:return_to, return_to)
+      |> assign_form_options()
 
-      {:error, %Ecto.Changeset{} = changeset} ->
-        render_edit(conn, movement, changeset, return_to)
+    with {:ok, updated_movement} <- Movements.update_movement(scope, movement, movement_params) do
+      conn
+      |> put_flash(:info, "Movimentação atualizada com sucesso!")
+      |> redirect(to: return_path(return_to, updated_movement))
+    else
+      error -> {conn, error}
     end
   end
 
   def delete(conn, %{"id" => id}) do
     scope = conn.assigns.current_scope
     movement = Movements.get_movement!(scope, id)
-    {:ok, _movement} = Movements.delete_movement(scope, movement)
 
-    conn
-    |> put_flash(:info, "Movimentação apagada com sucesso!")
-    |> redirect(to: ~p"/movement")
+    with {:ok, _movement} <- Movements.delete_movement(scope, movement) do
+      conn
+      |> put_flash(:info, "Movimentação apagada com sucesso!")
+      |> redirect(to: ~p"/movement")
+    else
+      error -> {conn, error}
+    end
   end
 
   defp render_new(conn, changeset) do

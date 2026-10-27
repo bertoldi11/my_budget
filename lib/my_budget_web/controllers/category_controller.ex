@@ -1,6 +1,8 @@
 defmodule MyBudgetWeb.CategoryController do
   use MyBudgetWeb, :controller
 
+  action_fallback MyBudgetWeb.FallbackController
+
   alias MyBudget.Movements
   alias MyBudget.Movements.Category
 
@@ -21,14 +23,19 @@ defmodule MyBudgetWeb.CategoryController do
   end
 
   def create(conn, %{"category" => category_params}) do
-    case Movements.create_category(conn.assigns.current_scope, category_params) do
-      {:ok, _category} ->
-        conn
-        |> put_flash(:info, "Categoria cadastrada com sucesso!")
-        |> redirect(to: ~p"/category")
+    scope = conn.assigns.current_scope
 
-      {:error, %Ecto.Changeset{} = changeset} ->
-        render_new(conn, changeset)
+    conn =
+      conn
+      |> assign(:page_title, "Nova Categoria")
+      |> assign(:sections_options, sections_options(scope))
+
+    with {:ok, _category} <- Movements.create_category(scope, category_params) do
+      conn
+      |> put_flash(:info, "Categoria cadastrada com sucesso!")
+      |> redirect(to: ~p"/category")
+    else
+      error -> {conn, error}
     end
   end
 
@@ -51,25 +58,33 @@ defmodule MyBudgetWeb.CategoryController do
     category = Movements.get_category!(scope, id)
     return_to = return_to(params["return_to"])
 
-    case Movements.update_category(scope, category, category_params) do
-      {:ok, category} ->
-        conn
-        |> put_flash(:info, "Categoria atualizada com sucesso!")
-        |> redirect(to: return_path(return_to, category))
+    conn =
+      conn
+      |> assign(:page_title, "Editar Categoria")
+      |> assign(:category, category)
+      |> assign(:return_to, return_to)
+      |> assign(:sections_options, sections_options(scope))
 
-      {:error, %Ecto.Changeset{} = changeset} ->
-        render_edit(conn, category, changeset, return_to)
+    with {:ok, updated_category} <- Movements.update_category(scope, category, category_params) do
+      conn
+      |> put_flash(:info, "Categoria atualizada com sucesso!")
+      |> redirect(to: return_path(return_to, updated_category))
+    else
+      error -> {conn, error}
     end
   end
 
   def delete(conn, %{"id" => id}) do
     scope = conn.assigns.current_scope
     category = Movements.get_category!(scope, id)
-    {:ok, _category} = Movements.delete_category(scope, category)
 
-    conn
-    |> put_flash(:info, "Categoria apagada com sucesso!")
-    |> redirect(to: ~p"/category")
+    with {:ok, _category} <- Movements.delete_category(scope, category) do
+      conn
+      |> put_flash(:info, "Categoria apagada com sucesso!")
+      |> redirect(to: ~p"/category")
+    else
+      error -> {conn, error}
+    end
   end
 
   defp render_new(conn, changeset) do
