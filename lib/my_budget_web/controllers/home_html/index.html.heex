@@ -26,16 +26,25 @@
   </div>
 
   <%!-- Total do mês --%>
-  <div class="rounded-box bg-primary text-primary-content p-5 shadow-sm">
-    <p class="text-sm opacity-80">Total movimentado</p>
-    <p class="mt-1 text-3xl font-bold tabular-nums">{@grand_total}</p>
-    <p class="mt-1 text-sm opacity-80">
-      Movimentações: {@current_date.month_string} de {@current_date.year} · {length(@sections)} {if(
-        length(@sections) == 1,
-        do: "seção",
-        else: "seções"
-      )}
-    </p>
+  <div class="rounded-box bg-primary text-primary-content p-5 shadow-sm flex items-center justify-between gap-4">
+    <div>
+      <p class="text-sm opacity-80">Total movimentado</p>
+      <p class="mt-1 text-3xl font-bold tabular-nums">{@grand_total}</p>
+      <p class="mt-1 text-sm opacity-80">
+        {@current_date.month_string} de {@current_date.year} · {length(@sections)} {if(
+          length(@sections) == 1,
+          do: "seção",
+          else: "seções"
+        )}
+      </p>
+    </div>
+    <.link
+      href={~p"/movement/new"}
+      id="new-movement-btn"
+      class="btn btn-sm shrink-0 border border-primary-content/30 bg-transparent text-primary-content hover:bg-primary-content/15 transition-colors"
+    >
+      <.icon name="hero-plus" class="size-4" /> Nova
+    </.link>
   </div>
 
   <%!-- Estado vazio --%>

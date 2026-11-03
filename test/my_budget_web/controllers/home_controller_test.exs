@@ -20,7 +20,7 @@ defmodule MyBudgetWeb.HomeControllerTest do
       conn = get(conn, ~p"/?m=10&y=2026")
       response = html_response(conn, 200)
 
-      assert response =~ "Movimentações: Outubro de 2026"
+      assert response =~ "Outubro de 2026"
       assert response =~ "Moradia"
       assert response =~ "Aluguel"
       assert response =~ "150,00"
@@ -32,7 +32,7 @@ defmodule MyBudgetWeb.HomeControllerTest do
       conn = get(conn, ~p"/?m=1&y=2027")
       response = html_response(conn, 200)
 
-      assert response =~ "Movimentações: Janeiro de 2027"
+      assert response =~ "Janeiro de 2027"
       refute response =~ "Aluguel"
       assert response =~ "/?m=12&amp;y=2026"
     end
