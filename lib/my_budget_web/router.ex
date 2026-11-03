@@ -70,7 +70,10 @@ defmodule MyBudgetWeb.Router do
   scope "/", MyBudgetWeb do
     pipe_through [:browser, :require_authenticated_user]
 
-    get "/", HomeController, :index
+    live_session :require_authenticated_user,
+      on_mount: [{MyBudgetWeb.UserAuth, :require_authenticated}] do
+      live "/", HomeLive
+    end
 
     resources "/category", CategoryController
     resources "/payment_method", PaymentMethodController

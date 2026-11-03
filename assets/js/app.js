@@ -67,6 +67,7 @@ function initCurrencyMasks() {
 }
 
 document.addEventListener("DOMContentLoaded", initCurrencyMasks)
+window.addEventListener("phx:update", initCurrencyMasks)
 
 
 // expose liveSocket on window for web console debug logs and latency simulation:

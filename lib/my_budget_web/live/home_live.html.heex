@@ -1,0 +1,171 @@
+<Layouts.app flash={@flash} current_scope={@current_scope}>
+  <%!-- Navegação de mês --%>
+  <div class="flex items-center justify-between gap-2">
+    <.link
+      id="previous-month"
+      patch={~p"/?m=#{@previous_date.month}&y=#{@previous_date.year}"}
+      class="btn btn-ghost btn-sm"
+    >
+      <.icon name="hero-arrow-left" />
+      <span class="hidden sm:inline">{@previous_date.month_string}/{@previous_date.year}</span>
+    </.link>
+
+    <h1 class="text-center text-lg font-semibold capitalize">
+      {@current_date.month_string}
+      <span class="text-base-content/60">de {@current_date.year}</span>
+    </h1>
+
+    <.link
+      id="next-month"
+      patch={~p"/?m=#{@next_date.month}&y=#{@next_date.year}"}
+      class="btn btn-ghost btn-sm"
+    >
+      <span class="hidden sm:inline">{@next_date.month_string}/{@next_date.year}</span>
+      <.icon name="hero-arrow-right" />
+    </.link>
+  </div>
+
+  <%!-- Total do mês --%>
+  <div class="rounded-box bg-primary text-primary-content p-5 shadow-sm flex items-center justify-between gap-4">
+    <div>
+      <p class="text-sm opacity-80">Total movimentado</p>
+      <p class="mt-1 text-3xl font-bold tabular-nums">{@grand_total}</p>
+      <p class="mt-1 text-sm opacity-80">
+        {@current_date.month_string} de {@current_date.year} · {length(@sections)} {if(
+          length(@sections) == 1,
+          do: "seção",
+          else: "seções"
+        )}
+      </p>
+    </div>
+    <button
+      id="new-movement-btn"
+      phx-click="open_modal"
+      class="btn btn-sm shrink-0 border border-primary-content/30 bg-transparent text-primary-content hover:bg-primary-content/15 transition-colors"
+    >
+      <.icon name="hero-plus" class="size-4" /> Nova
+    </button>
+  </div>
+
+  <%!-- Estado vazio --%>
+  <div
+    :if={@sections == []}
+    class="rounded-box border border-dashed border-base-300 py-12 text-center"
+  >
+    <.icon name="hero-banknotes" class="mx-auto size-10 text-base-content/40" />
+    <p class="mt-2 font-medium">Nenhuma movimentação em {@current_date.month_string}</p>
+    <p class="text-sm text-base-content/60">
+      Cadastre movimentações para ver o resumo do mês aqui.
+    </p>
+    <.button variant="primary" phx-click="open_modal" class="mt-4">
+      <.icon name="hero-plus" /> Nova movimentação
+    </.button>
+  </div>
+
+  <%!-- Seções --%>
+  <div class="space-y-4">
+    <%= for section <- @sections do %>
+      <section class="rounded-box border border-base-300 bg-base-100 overflow-hidden">
+        <header class="flex items-center justify-between gap-3 bg-base-200 px-4 py-3">
+          <div class="flex items-center gap-2">
+            <h2 class="font-semibold">{section.section_name}</h2>
+            <span class="badge badge-sm badge-ghost">{section.count}</span>
+          </div>
+          <span class="font-semibold tabular-nums">{section.total_amount}</span>
+        </header>
+
+        <ul class="divide-y divide-base-200">
+          <%= for category <- section.categories do %>
+            <li class="px-4 py-3">
+              <div class="flex items-center justify-between gap-3">
+                <span>{category.category}</span>
+                <span class="font-medium tabular-nums">{category.formatted_amount}</span>
+              </div>
+              <div class="mt-2 h-1.5 w-full overflow-hidden rounded-full bg-base-300">
+                <div
+                  class="h-full rounded-full bg-primary"
+                  style={"width: #{bar_width(category.amount, section.total)}"}
+                >
+                </div>
+              </div>
+            </li>
+          <% end %>
+        </ul>
+      </section>
+    <% end %>
+  </div>
+
+  <%!-- Modal nova movimentação --%>
+  <%= if @show_modal do %>
+    <div
+      id="movement-modal"
+      class="fixed inset-0 z-50 flex items-center justify-center p-4"
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="modal-title"
+    >
+      <%!-- Backdrop --%>
+      <div
+        class="absolute inset-0 bg-black/50 backdrop-blur-sm"
+        phx-click="close_modal"
+      >
+      </div>
+
+      <%!-- Conteúdo --%>
+      <div class="relative z-10 w-full max-w-md rounded-box bg-base-100 shadow-xl overflow-y-auto max-h-[90vh]">
+        <div class="flex items-center justify-between border-b border-base-300 px-6 py-4">
+          <h2 id="modal-title" class="text-lg font-semibold">Nova movimentação</h2>
+          <button
+            id="close-modal-btn"
+            phx-click="close_modal"
+            class="btn btn-ghost btn-sm btn-circle"
+            aria-label="Fechar"
+          >
+            <.icon name="hero-x-mark" class="size-4" />
+          </button>
+        </div>
+
+        <div class="p-6">
+          <.form
+            for={@form}
+            id="modal-movement-form"
+            phx-submit="save"
+            phx-change="validate"
+            class="space-y-4"
+          >
+            <.input
+              field={@form[:category_id]}
+              type="select"
+              label="Categoria"
+              prompt="Selecione uma categoria"
+              options={@categories_options}
+            />
+            <.input
+              field={@form[:payment_method_id]}
+              type="select"
+              label="Pago com"
+              options={@payment_method_options}
+            />
+            <.input field={@form[:expend_date]} type="date" label="Data" />
+            <.input field={@form[:type]} type="select" label="Tipo" options={@type_options} />
+            <.input
+              field={@form[:amount_reais]}
+              type="text"
+              label="Valor (R$)"
+              placeholder="0,00"
+              autocomplete="off"
+              data-currency-mask="true"
+            />
+            <.input field={@form[:description]} type="text" label="Descrição" />
+            <.input field={@form[:counter_party]} type="text" label="Pago a/Recebido de" />
+
+            <footer class="mt-6 flex items-center gap-3">
+              <.button phx-disable-with="Salvando..." variant="primary">Salvar</.button>
+              <.button type="button" phx-click="close_modal">Cancelar</.button>
+            </footer>
+          </.form>
+        </div>
+      </div>
+    </div>
+  <% end %>
+</Layouts.app>
