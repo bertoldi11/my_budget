@@ -133,13 +133,87 @@
             phx-change="validate"
             class="space-y-4"
           >
-            <.input
-              field={@form[:category_id]}
-              type="select"
-              label="Categoria"
-              prompt="Selecione uma categoria"
-              options={@categories_options}
-            />
+            <%!-- Combobox de categoria com filtro client-side --%>
+            <div class="fieldset mb-2">
+              <label>
+                <span class="label mb-1">Categoria</span>
+
+                <%!-- Select real: oculto visualmente, acessível ao LiveViewTest e ao phx-change --%>
+                <select
+                  id={@form[:category_id].id}
+                  name={@form[:category_id].name}
+                  class="sr-only"
+                  tabindex="-1"
+                  aria-hidden="true"
+                >
+                  <option value="">Selecione uma categoria</option>
+                  <%= for {label, value} <- @categories_options do %>
+                    <option
+                      value={value}
+                      selected={to_string(@form[:category_id].value) == to_string(value)}
+                    >
+                      {label}
+                    </option>
+                  <% end %>
+                </select>
+
+                <%!-- UI da combobox: gerenciada pelo hook JS --%>
+                <div
+                  id="category-combobox"
+                  phx-hook=".CategoryCombobox"
+                  phx-update="ignore"
+                  data-select-id={@form[:category_id].id}
+                  class="relative"
+                >
+                  <div class="relative">
+                    <input
+                      type="text"
+                      id="category-combobox-search"
+                      placeholder="Buscar categoria..."
+                      autocomplete="off"
+                      class="w-full input pr-9"
+                      role="combobox"
+                      aria-autocomplete="list"
+                      aria-controls="category-combobox-options"
+                      aria-expanded="false"
+                    />
+                    <span class="pointer-events-none absolute inset-y-0 right-3 flex items-center">
+                      <.icon name="hero-chevron-up-down" class="size-4 text-base-content/50" />
+                    </span>
+                  </div>
+                  <ul
+                    id="category-combobox-options"
+                    role="listbox"
+                    class="absolute z-20 mt-1 hidden max-h-60 w-full overflow-auto rounded-box border border-base-300 bg-base-100 py-1 shadow-lg"
+                  >
+                    <li
+                      data-no-match
+                      class="hidden select-none px-3 py-2 text-sm text-base-content/50"
+                    >
+                      Nenhuma categoria encontrada
+                    </li>
+                    <%= for {label, value} <- @categories_options do %>
+                      <li
+                        role="option"
+                        data-value={value}
+                        data-label={label}
+                        class="cursor-pointer select-none px-3 py-2 text-sm transition-colors hover:bg-primary/10 hover:text-primary"
+                      >
+                        {label}
+                      </li>
+                    <% end %>
+                  </ul>
+                </div>
+              </label>
+              <%= if Phoenix.Component.used_input?(@form[:category_id]) do %>
+                <%= for error <- @form[:category_id].errors do %>
+                  <p class="mt-1.5 flex gap-2 items-center text-sm text-error">
+                    <.icon name="hero-exclamation-circle" class="size-5" />
+                    {translate_error(error)}
+                  </p>
+                <% end %>
+              <% end %>
+            </div>
             <.input
               field={@form[:payment_method_id]}
               type="select"
@@ -169,3 +243,157 @@
     </div>
   <% end %>
 </Layouts.app>
+
+<script :type={Phoenix.LiveView.ColocatedHook} name=".CategoryCombobox">
+  export default {
+    mounted() {
+      this.controller = new AbortController()
+      const signal = this.controller.signal
+
+      const selectId = this.el.dataset.selectId
+      this.selectInput = document.getElementById(selectId)
+      this.searchInput = this.el.querySelector("#category-combobox-search")
+      this.optionsList = this.el.querySelector("#category-combobox-options")
+      this.allOptions = Array.from(this.optionsList.querySelectorAll("li[data-value]"))
+      this.noMatchMsg = this.optionsList.querySelector("[data-no-match]")
+      this.highlighted = -1
+      this.isOpen = false
+
+      this.syncLabelFromValue()
+
+      this.searchInput.addEventListener("input", (e) => this.onInput(e))
+      this.searchInput.addEventListener("focus", () => this.openDropdown())
+      this.searchInput.addEventListener("keydown", (e) => this.onKeydown(e))
+      this.optionsList.addEventListener("mousedown", (e) => this.onOptionMousedown(e))
+      document.addEventListener("click", (e) => this.onDocumentClick(e), {signal})
+    },
+
+    destroyed() {
+      this.controller.abort()
+    },
+
+    syncLabelFromValue() {
+      const value = this.selectInput.value
+      if (!value) return
+      const opt = this.allOptions.find(li => li.dataset.value == value)
+      if (opt) this.searchInput.value = opt.dataset.label
+    },
+
+    openDropdown() {
+      if (this.isOpen) return
+      this.isOpen = true
+      this.optionsList.classList.remove("hidden")
+      this.searchInput.setAttribute("aria-expanded", "true")
+      this.filterOptions(this.searchInput.value)
+    },
+
+    closeDropdown() {
+      if (!this.isOpen) return
+      this.isOpen = false
+      this.optionsList.classList.add("hidden")
+      this.searchInput.setAttribute("aria-expanded", "false")
+      this.highlighted = -1
+      this.clearHighlight()
+      const value = this.selectInput.value
+      if (value) {
+        const opt = this.allOptions.find(li => li.dataset.value == value)
+        if (opt) this.searchInput.value = opt.dataset.label
+      } else {
+        this.searchInput.value = ""
+      }
+    },
+
+    onInput(e) {
+      this.openDropdown()
+      this.filterOptions(e.target.value)
+      if (this.selectInput.value) {
+        this.selectInput.value = ""
+        this.selectInput.dispatchEvent(new Event("input", {bubbles: true}))
+      }
+    },
+
+    filterOptions(query) {
+      const q = (query || "").toLowerCase().trim()
+      let visibleCount = 0
+      this.allOptions.forEach(li => {
+        const matches = !q || li.dataset.label.toLowerCase().includes(q)
+        li.classList.toggle("hidden", !matches)
+        if (matches) visibleCount++
+      })
+      this.noMatchMsg.classList.toggle("hidden", visibleCount > 0)
+      this.highlighted = -1
+      this.clearHighlight()
+    },
+
+    onOptionMousedown(e) {
+      e.preventDefault()
+      const li = e.target.closest("li[data-value]")
+      if (li) this.selectOption(li)
+    },
+
+    selectOption(li) {
+      this.searchInput.value = li.dataset.label
+      this.selectInput.value = li.dataset.value
+      this.selectInput.dispatchEvent(new Event("input", {bubbles: true}))
+      this.selectInput.dispatchEvent(new Event("change", {bubbles: true}))
+      this.closeDropdown()
+    },
+
+    onKeydown(e) {
+      const visible = this.getVisibleOptions()
+      if (!this.isOpen) {
+        if (e.key === "ArrowDown" || e.key === "Enter" || e.key === " ") {
+          e.preventDefault()
+          this.openDropdown()
+        }
+        return
+      }
+      switch (e.key) {
+        case "ArrowDown":
+          e.preventDefault()
+          this.highlighted = Math.min(this.highlighted + 1, visible.length - 1)
+          this.applyHighlight(visible)
+          break
+        case "ArrowUp":
+          e.preventDefault()
+          this.highlighted = Math.max(this.highlighted - 1, 0)
+          this.applyHighlight(visible)
+          break
+        case "Enter":
+          e.preventDefault()
+          if (this.highlighted >= 0 && visible[this.highlighted]) {
+            this.selectOption(visible[this.highlighted])
+          }
+          break
+        case "Escape":
+          e.preventDefault()
+          this.closeDropdown()
+          break
+        case "Tab":
+          this.closeDropdown()
+          break
+      }
+    },
+
+    getVisibleOptions() {
+      return this.allOptions.filter(li => !li.classList.contains("hidden"))
+    },
+
+    clearHighlight() {
+      this.allOptions.forEach(li => li.classList.remove("bg-primary/10", "text-primary"))
+    },
+
+    applyHighlight(visible) {
+      this.clearHighlight()
+      const opt = visible[this.highlighted]
+      if (opt) {
+        opt.classList.add("bg-primary/10", "text-primary")
+        opt.scrollIntoView({block: "nearest"})
+      }
+    },
+
+    onDocumentClick(e) {
+      if (!this.el.contains(e.target)) this.closeDropdown()
+    }
+  }
+</script>
