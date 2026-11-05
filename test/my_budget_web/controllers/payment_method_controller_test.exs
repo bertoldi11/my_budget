@@ -3,8 +3,8 @@ defmodule MyBudgetWeb.PaymentMethodControllerTest do
 
   import MyBudget.MovementsFixtures
 
-  @create_attrs %{name: "some name"}
-  @update_attrs %{name: "some updated name"}
+  @create_attrs %{name: "some name", type: "conta_corrente"}
+  @update_attrs %{name: "some updated name", type: "conta_corrente"}
   @invalid_attrs %{name: nil}
 
   setup :register_and_log_in_user

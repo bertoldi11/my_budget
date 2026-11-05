@@ -128,13 +128,14 @@ defmodule MyBudget.MovementsTest do
     end
 
     test "create_payment_method/2 with valid data creates a payment_method" do
-      valid_attrs = %{name: "some name"}
+      valid_attrs = %{name: "some name", type: "conta_corrente"}
       scope = user_scope_fixture()
 
       assert {:ok, %PaymentMethod{} = payment_method} =
                Movements.create_payment_method(scope, valid_attrs)
 
       assert payment_method.name == "some name"
+      assert payment_method.type == "conta_corrente"
       assert payment_method.user_id == scope.user.id
     end
 

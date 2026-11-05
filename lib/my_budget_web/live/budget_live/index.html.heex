@@ -1,0 +1,92 @@
+<Layouts.app flash={@flash} current_scope={@current_scope}>
+  <.header>
+    Orçamentos
+    <:subtitle>Planejamento mensal de receitas e gastos.</:subtitle>
+    <:actions>
+      <.button id="toggle-new-budget" variant="primary" phx-click="toggle_new_form">
+        <.icon name="hero-plus" /> Novo Orçamento
+      </.button>
+    </:actions>
+  </.header>
+
+  <%!-- Formulário de novo orçamento --%>
+  <%= if @show_new_form do %>
+    <div id="new-budget-form" class="rounded-box border border-base-300 bg-base-100 p-5 space-y-4">
+      <p class="font-medium text-sm">Selecione o mês e ano:</p>
+      <div class="flex gap-3">
+        <div class="form-control w-full max-w-xs">
+          <label class="label text-xs">Mês</label>
+          <select
+            id="new-budget-month"
+            class="select select-bordered select-sm"
+            phx-change="new_month_change"
+            name="month"
+          >
+            <%= for {label, val} <- [
+              {"Janeiro", 1}, {"Fevereiro", 2}, {"Março", 3}, {"Abril", 4},
+              {"Maio", 5}, {"Junho", 6}, {"Julho", 7}, {"Agosto", 8},
+              {"Setembro", 9}, {"Outubro", 10}, {"Novembro", 11}, {"Dezembro", 12}
+            ] do %>
+              <option value={val} selected={val == @new_month}>{label}</option>
+            <% end %>
+          </select>
+        </div>
+        <div class="form-control w-full max-w-xs">
+          <label class="label text-xs">Ano</label>
+          <select
+            id="new-budget-year"
+            class="select select-bordered select-sm"
+            phx-change="new_month_change"
+            name="year"
+          >
+            <%= for year <- (Date.utc_today().year - 1)..(Date.utc_today().year + 1) do %>
+              <option value={year} selected={year == @new_year}>{year}</option>
+            <% end %>
+          </select>
+        </div>
+      </div>
+      <div class="flex gap-2">
+        <.button id="confirm-new-budget" variant="primary" phx-click="create_budget">
+          Criar Orçamento
+        </.button>
+        <.button id="cancel-new-budget" phx-click="toggle_new_form" class="btn btn-ghost">
+          Cancelar
+        </.button>
+      </div>
+    </div>
+  <% end %>
+
+  <%!-- Estado vazio --%>
+  <div
+    :if={@budgets == []}
+    class="rounded-box border border-dashed border-base-300 py-12 text-center"
+  >
+    <.icon name="hero-calculator" class="mx-auto size-10 text-base-content/40" />
+    <p class="mt-2 font-medium">Nenhum orçamento criado ainda</p>
+    <p class="text-sm text-base-content/60">Crie um orçamento para começar a planejar o mês.</p>
+  </div>
+
+  <%!-- Lista de orçamentos --%>
+  <section
+    :if={@budgets != []}
+    class="rounded-box border border-base-300 bg-base-100 overflow-hidden"
+  >
+    <ul class="divide-y divide-base-200">
+      <li
+        :for={budget <- @budgets}
+        id={"budget-#{budget.id}"}
+        class="group flex items-center justify-between gap-3 px-4 py-3 hover:bg-base-200/50"
+      >
+        <.link
+          navigate={~p"/budget/#{budget.reference_date.year}/#{budget.reference_date.month}"}
+          class="flex-1 font-medium hover:underline"
+        >
+          {format_month(budget.reference_date)}
+        </.link>
+        <span class={status_class(budget.status)}>
+          {status_label(budget.status)}
+        </span>
+      </li>
+    </ul>
+  </section>
+</Layouts.app>

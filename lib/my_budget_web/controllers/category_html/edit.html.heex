@@ -9,5 +9,6 @@
     sections_options={@sections_options}
     return_to={@return_to}
     cancel_path={if(@return_to == "show", do: ~p"/category/#{@category}", else: ~p"/category")}
+    show_budget_toggle={@show_budget_toggle}
   />
 </Layouts.app>

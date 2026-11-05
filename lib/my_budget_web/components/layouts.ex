@@ -90,15 +90,22 @@ defmodule MyBudgetWeb.Layouts do
 
   @doc """
   Primary navigation links, as `{label, path}` tuples.
+  Accepts an optional scope to conditionally include feature-flagged links.
   """
-  def nav_links do
-    [
+  def nav_links(scope \\ nil) do
+    base = [
       {"Home", ~p"/"},
       {"Movimentações", ~p"/movement"},
       {"Categorias", ~p"/category"},
       {"Sessões", ~p"/section"},
       {"Métodos de pagamento", ~p"/payment_method"}
     ]
+
+    if MyBudget.Accounts.Scope.budget_enabled?(scope) do
+      base ++ [{"Orçamento", ~p"/budget"}]
+    else
+      base
+    end
   end
 
   @doc """
