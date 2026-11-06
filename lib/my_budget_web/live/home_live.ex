@@ -9,6 +9,7 @@ defmodule MyBudgetWeb.HomeLive do
     {:ok,
      socket
      |> assign(:show_modal, false)
+     |> assign(:expanded_categories, MapSet.new())
      |> assign(:form, nil)
      |> assign(:categories_options, [])
      |> assign(:payment_method_options, [])
@@ -29,6 +30,19 @@ defmodule MyBudgetWeb.HomeLive do
      |> assign(:show_modal, true)
      |> assign(:form, to_form(changeset))
      |> assign_form_options()}
+  end
+
+  def handle_event("toggle_category", %{"id" => id}, socket) do
+    expanded = socket.assigns.expanded_categories
+
+    expanded =
+      if MapSet.member?(expanded, id) do
+        MapSet.delete(expanded, id)
+      else
+        MapSet.put(expanded, id)
+      end
+
+    {:noreply, assign(socket, :expanded_categories, expanded)}
   end
 
   def handle_event("close_modal", _params, socket) do
@@ -64,6 +78,9 @@ defmodule MyBudgetWeb.HomeLive do
 
   def bar_width(_amount, total) when total in [0, nil], do: "0%"
   def bar_width(amount, total), do: "#{Float.round(amount / total * 100, 1)}%"
+
+  def expanded?(expanded_categories, category_id),
+    do: MapSet.member?(expanded_categories, to_string(category_id))
 
   defp load_page(socket, month, year) do
     scope = socket.assigns.current_scope
@@ -111,31 +128,52 @@ defmodule MyBudgetWeb.HomeLive do
 
   defp list_movements(scope, month, year) do
     scope
-    |> Movements.list_moviments_by_month_year(month, year)
-    |> Enum.map(&Map.put(&1, :formatted_amount, format_amount(&1.amount)))
-    |> group_by_section()
-    |> sections_with_metadata()
-  end
-
-  defp group_by_section(movements) do
-    Enum.group_by(movements, &(&1.session || "Sem seção"))
-  end
-
-  defp sections_with_metadata(grouped) do
-    grouped
-    |> Enum.map(fn {section_name, movs} ->
-      total_amount = Enum.reduce(movs, 0, fn mov, acc -> acc + mov.amount end)
-
-      %{
-        section_name: section_name,
-        count: length(movs),
-        total: total_amount,
-        total_amount: format_amount(total_amount),
-        categories: movs
-      }
-    end)
+    |> Movements.list_movements_details_by_month_year(month, year)
+    |> Enum.group_by(&(&1.session || "Sem seção"))
+    |> Enum.map(&build_section/1)
     |> Enum.sort_by(& &1.section_name)
   end
+
+  defp build_section({section_name, movements}) do
+    categories =
+      movements
+      |> Enum.group_by(&{&1.category_id, &1.category})
+      |> Enum.map(&build_category/1)
+      |> Enum.sort_by(& &1.category)
+
+    total_amount = sum_amounts(categories)
+
+    %{
+      section_name: section_name,
+      count: length(categories),
+      total: total_amount,
+      total_amount: format_amount(total_amount),
+      categories: categories
+    }
+  end
+
+  defp build_category({{category_id, category_name}, movements}) do
+    # Mais recentes primeiro; o `id` desempata movimentações na mesma data.
+    movements = Enum.sort_by(movements, &{Date.to_erl(&1.expend_date), &1.id}, :desc)
+    total_amount = sum_amounts(movements)
+
+    %{
+      id: category_id,
+      category: category_name,
+      count: length(movements),
+      amount: total_amount,
+      formatted_amount: format_amount(total_amount),
+      movements: Enum.map(movements, &decorate_movement/1)
+    }
+  end
+
+  defp decorate_movement(movement) do
+    movement
+    |> Map.put(:formatted_amount, format_amount(movement.amount))
+    |> Map.put(:formatted_expend_date, format_date(movement.expend_date))
+  end
+
+  defp sum_amounts(entries), do: entries |> Enum.map(& &1.amount) |> Enum.sum()
 
   defp compute_grand_total(sections) do
     sections
@@ -175,6 +213,8 @@ defmodule MyBudgetWeb.HomeLive do
       _ -> "Mês inválido"
     end
   end
+
+  defp format_date(%Date{} = date), do: Calendar.strftime(date, "%d/%m/%Y")
 
   defp format_amount(amount) do
     {:ok, formatted} = Cldr.Number.to_string(amount / 100, locale: "pt", currency: "BRL")

@@ -76,17 +76,76 @@
 
         <ul class="divide-y divide-base-200">
           <%= for category <- section.categories do %>
-            <li class="px-4 py-3">
-              <div class="flex items-center justify-between gap-3">
-                <span>{category.category}</span>
-                <span class="font-medium tabular-nums">{category.formatted_amount}</span>
-              </div>
-              <div class="mt-2 h-1.5 w-full overflow-hidden rounded-full bg-base-300">
-                <div
-                  class="h-full rounded-full bg-primary"
-                  style={"width: #{bar_width(category.amount, section.total)}"}
-                >
+            <li>
+              <%!-- Cabeçalho do acordeon: abre/fecha a lista de movimentações --%>
+              <button
+                type="button"
+                id={"category-toggle-#{category.id}"}
+                phx-click="toggle_category"
+                phx-value-id={category.id}
+                aria-expanded={to_string(expanded?(@expanded_categories, category.id))}
+                aria-controls={"category-movements-#{category.id}"}
+                class="w-full cursor-pointer px-4 py-3 text-left transition-colors hover:bg-base-200/60"
+              >
+                <div class="flex items-center justify-between gap-3">
+                  <span class="flex min-w-0 items-center gap-2">
+                    <.icon
+                      name="hero-chevron-right"
+                      class={[
+                        "size-4 shrink-0 text-base-content/50 transition-transform duration-200",
+                        expanded?(@expanded_categories, category.id) && "rotate-90"
+                      ]}
+                    />
+                    <span class="truncate">{category.category}</span>
+                    <span class="badge badge-xs badge-ghost shrink-0">{category.count}</span>
+                  </span>
+                  <span class="font-medium tabular-nums">{category.formatted_amount}</span>
                 </div>
+                <div class="mt-2 h-1.5 w-full overflow-hidden rounded-full bg-base-300">
+                  <div
+                    class="h-full rounded-full bg-primary transition-all duration-300"
+                    style={"width: #{bar_width(category.amount, section.total)}"}
+                  >
+                  </div>
+                </div>
+              </button>
+
+              <%!-- Movimentações da categoria, da mais recente para a mais antiga --%>
+              <div
+                :if={expanded?(@expanded_categories, category.id)}
+                id={"category-movements-#{category.id}"}
+                role="region"
+                aria-labelledby={"category-toggle-#{category.id}"}
+                class="border-t border-base-200 bg-base-200/40 px-4"
+              >
+                <ul class="divide-y divide-base-300/60">
+                  <li
+                    :for={movement <- category.movements}
+                    id={"movement-#{movement.id}"}
+                    class="flex items-start justify-between gap-3 py-2.5"
+                  >
+                    <div class="min-w-0">
+                      <p class="truncate text-sm font-medium">{movement.description}</p>
+                      <p class="mt-0.5 flex flex-wrap items-center gap-x-1.5 text-xs text-base-content/60">
+                        <span class="tabular-nums">{movement.formatted_expend_date}</span>
+                        <span :if={movement.counter_party} aria-hidden="true">·</span>
+                        <span :if={movement.counter_party} class="truncate">
+                          {movement.counter_party}
+                        </span>
+                        <span :if={movement.payment_method} aria-hidden="true">·</span>
+                        <span :if={movement.payment_method} class="truncate">
+                          {movement.payment_method}
+                        </span>
+                      </p>
+                    </div>
+                    <span class={[
+                      "shrink-0 text-sm font-medium tabular-nums",
+                      if(movement.type == "credit", do: "text-success", else: "text-base-content")
+                    ]}>
+                      {movement.formatted_amount}
+                    </span>
+                  </li>
+                </ul>
               </div>
             </li>
           <% end %>

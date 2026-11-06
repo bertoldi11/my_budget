@@ -467,7 +467,14 @@ defmodule MyBudget.Movements do
     |> Repo.preload([:category, :payment_method])
   end
 
-  def list_moviments_by_month_year(%Scope{} = scope, month, year) do
+  @doc """
+  Returns all movements of the given month/year for the scope, already joined
+  with their category and section, ordered by section name, category name and
+  then by `expend_date` from the most recent to the oldest.
+
+  Used by the home page to render the section > category > movements accordion.
+  """
+  def list_movements_details_by_month_year(%Scope{} = scope, month, year) do
     current_date = Date.new!(year, month, 1)
     start_day_of_month = Date.beginning_of_month(current_date)
     end_day_of_month = Date.end_of_month(current_date)
@@ -475,12 +482,23 @@ defmodule MyBudget.Movements do
     Movement
     |> join(:inner, [m], c in Category, on: m.category_id == c.id)
     |> join(:inner, [_, c], s in Section, on: c.section_id == s.id)
-    |> select([m, c, s], %{session: s.name, category: c.name, amount: sum(m.amount)})
-    |> where([m, _, _], m.expend_date >= ^start_day_of_month)
-    |> where([m, _, _], m.expend_date <= ^end_day_of_month)
-    |> where([m, _, _], m.user_id == ^scope.user.id)
-    |> group_by([_, c, s], [s.name, c.name])
-    |> order_by([_, c, s], asc: s.name, asc: c.name)
+    |> join(:left, [m, _, _], p in PaymentMethod, on: m.payment_method_id == p.id)
+    |> where([m, _, _, _], m.expend_date >= ^start_day_of_month)
+    |> where([m, _, _, _], m.expend_date <= ^end_day_of_month)
+    |> where([m, _, _, _], m.user_id == ^scope.user.id)
+    |> order_by([m, c, s, _], asc: s.name, asc: c.name, desc: m.expend_date, desc: m.id)
+    |> select([m, c, s, p], %{
+      id: m.id,
+      session: s.name,
+      category: c.name,
+      category_id: c.id,
+      amount: m.amount,
+      type: m.type,
+      description: m.description,
+      counter_party: m.counter_party,
+      expend_date: m.expend_date,
+      payment_method: p.name
+    })
     |> Repo.all()
   end
 
