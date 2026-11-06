@@ -37,7 +37,8 @@ defmodule MyBudget.MovementsFixtures do
   def payment_method_fixture(scope, attrs \\ %{}) do
     attrs =
       Enum.into(attrs, %{
-        name: "some name"
+        name: "some name",
+        type: "conta_corrente"
       })
 
     {:ok, payment_method} = MyBudget.Movements.create_payment_method(scope, attrs)

@@ -30,4 +30,7 @@ defmodule MyBudget.Accounts.Scope do
   end
 
   def for_user(nil), do: nil
+
+  def budget_enabled?(%__MODULE__{user: %User{budget_enabled: true}}), do: true
+  def budget_enabled?(_), do: false
 end

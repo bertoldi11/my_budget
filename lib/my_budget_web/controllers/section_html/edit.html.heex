@@ -8,5 +8,6 @@
     action={~p"/section/#{@section}"}
     return_to={@return_to}
     cancel_path={if(@return_to == "show", do: ~p"/section/#{@section}", else: ~p"/section")}
+    show_budget_toggle={@show_budget_toggle}
   />
 </Layouts.app>

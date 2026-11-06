@@ -2,6 +2,42 @@
   <.form for={@form} id="payment_method-form" action={@action} class="space-y-4">
     <input type="hidden" name="return_to" value={@return_to} />
     <.input field={@form[:name]} type="text" label="Nome" />
+    <.input
+      field={@form[:type]}
+      type="select"
+      label="Tipo"
+      id="payment_method_type"
+      options={[
+        {"Conta Corrente", "conta_corrente"},
+        {"Conta Investimento", "conta_investimento"},
+        {"Cartão de Crédito", "cartao_credito"},
+        {"Cartão de Débito", "cartao_debito"}
+      ]}
+    />
+    <div
+      id="credit-card-fields"
+      class={[
+        "grid grid-cols-2 gap-4 rounded-lg border border-base-300 bg-base-200/50 p-4",
+        @form[:type].value != "cartao_credito" && "hidden"
+      ]}
+    >
+      <.input
+        field={@form[:due_day]}
+        type="number"
+        label="Dia de Vencimento"
+        min="1"
+        max="28"
+        placeholder="Ex: 10"
+      />
+      <.input
+        field={@form[:closing_day]}
+        type="number"
+        label="Dia de Fechamento"
+        min="1"
+        max="28"
+        placeholder="Ex: 3"
+      />
+    </div>
     <footer class="mt-6 flex items-center gap-3">
       <.button phx-disable-with="Processando..." variant="primary">Salvar</.button>
       <.button href={@cancel_path} class="btn btn-ghost">Cancelar</.button>

@@ -69,6 +69,25 @@ function initCurrencyMasks() {
 document.addEventListener("DOMContentLoaded", initCurrencyMasks)
 window.addEventListener("phx:update", initCurrencyMasks)
 
+function initPaymentMethodTypeToggle() {
+  const typeSelect = document.getElementById("payment_method_type")
+  const cardFields = document.getElementById("credit-card-fields")
+  if (!typeSelect || !cardFields) return
+
+  const toggle = () => {
+    if (typeSelect.value === "cartao_credito") {
+      cardFields.classList.remove("hidden")
+    } else {
+      cardFields.classList.add("hidden")
+    }
+  }
+
+  typeSelect.addEventListener("change", toggle)
+}
+
+document.addEventListener("DOMContentLoaded", initPaymentMethodTypeToggle)
+window.addEventListener("phx:update", initPaymentMethodTypeToggle)
+
 
 // expose liveSocket on window for web console debug logs and latency simulation:
 // >> liveSocket.enableDebug()

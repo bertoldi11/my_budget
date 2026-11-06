@@ -14,6 +14,13 @@
   <div class="rounded-box border border-base-300 bg-base-100 p-2">
     <.list>
       <:item title="Nome">{@payment_method.name}</:item>
+      <:item title="Tipo">{payment_method_type_label(@payment_method.type)}</:item>
+      <:item :if={@payment_method.type == "cartao_credito"} title="Dia de Vencimento">
+        {@payment_method.due_day}
+      </:item>
+      <:item :if={@payment_method.type == "cartao_credito"} title="Dia de Fechamento">
+        {@payment_method.closing_day}
+      </:item>
     </.list>
   </div>
 </Layouts.app>

@@ -3,5 +3,10 @@
     {@page_title}
   </.header>
 
-  <.section_form form={@form} action={~p"/section"} cancel_path={~p"/section"} />
+  <.section_form
+    form={@form}
+    action={~p"/section"}
+    cancel_path={~p"/section"}
+    show_budget_toggle={@show_budget_toggle}
+  />
 </Layouts.app>

@@ -73,11 +73,19 @@ defmodule MyBudgetWeb.Router do
     live_session :require_authenticated_user,
       on_mount: [{MyBudgetWeb.UserAuth, :require_authenticated}] do
       live "/", HomeLive
+      live "/budget", BudgetLive.Index, :index
+      live "/budget/:year/:month", BudgetLive.Show, :show
     end
 
     resources "/category", CategoryController
+    post "/category/:id/budget_confirm", CategoryController, :budget_activate
+    get "/category/:id/budget_confirm", CategoryController, :budget_confirm
+
     resources "/payment_method", PaymentMethodController
     resources "/section", SectionController
+    post "/section/:id/budget_confirm", SectionController, :budget_activate
+    get "/section/:id/budget_confirm", SectionController, :budget_confirm
+
     resources "/movement", MovementController
   end
 end

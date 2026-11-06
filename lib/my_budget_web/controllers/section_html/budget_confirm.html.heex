@@ -1,0 +1,37 @@
+<Layouts.app flash={@flash} current_scope={@current_scope}>
+  <.header>
+    {@page_title}
+  </.header>
+
+  <div class="rounded-box border border-base-300 bg-base-100 p-8 max-w-lg">
+    <div class="flex items-start gap-4">
+      <div class="rounded-full bg-primary/10 p-3 shrink-0">
+        <.icon name="hero-currency-dollar" class="size-6 text-primary" />
+      </div>
+      <div class="space-y-1">
+        <p class="font-semibold text-base">Adicionar ao orçamento do mês atual?</p>
+        <p class="text-sm text-base-content/60">
+          A sessão <span class="font-medium text-base-content">{@section.name}</span>
+          foi marcada como ativa no orçamento. Deseja criar alocações para suas
+          categorias no orçamento do mês atual?
+        </p>
+      </div>
+    </div>
+
+    <div class="mt-6 flex flex-col sm:flex-row gap-3">
+      <form action={~p"/section/#{@section}/budget_confirm"} method="post" class="flex-1">
+        <input type="hidden" name="_csrf_token" value={Plug.CSRFProtection.get_csrf_token()} />
+        <.button id="confirm-budget-yes" type="submit" variant="primary" class="w-full">
+          <.icon name="hero-check" class="size-4" /> Sim, adicionar ao mês atual
+        </.button>
+      </form>
+      <.button
+        id="confirm-budget-no"
+        href={~p"/section"}
+        class="btn btn-ghost flex-1"
+      >
+        Não, só para os próximos meses
+      </.button>
+    </div>
+  </div>
+</Layouts.app>

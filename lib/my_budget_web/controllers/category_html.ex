@@ -11,6 +11,7 @@ defmodule MyBudgetWeb.CategoryHTML do
   attr :sections_options, :list, required: true
   attr :return_to, :string, default: "index"
   attr :cancel_path, :string, required: true
+  attr :show_budget_toggle, :boolean, default: false
 
   def category_form(assigns)
 end
