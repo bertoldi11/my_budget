@@ -17,12 +17,6 @@ defmodule MyBudget.Budget do
     |> Repo.all()
   end
 
-  def get_monthly_budget!(scope, id) do
-    MonthlyBudget
-    |> where(user_id: ^scope.user.id, id: ^id)
-    |> Repo.one!()
-  end
-
   def get_or_create_monthly_budget(%Scope{} = scope, year, month) do
     reference_date = Date.new!(year, month, 1)
 

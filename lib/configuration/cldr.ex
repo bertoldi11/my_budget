@@ -3,7 +3,7 @@ defmodule MyBudgetWeb.Cldr do
     default_locale: "pt",
     locales: ["pt"],
     add_fallback_locales: false,
-    gettext: MyApp.Gettext,
+    gettext: MyBudgetWeb.Gettext,
     data_dir: "./priv/cldr",
     otp_app: :my_budget,
     precompile_number_formats: ["R$ #.##0,##"],

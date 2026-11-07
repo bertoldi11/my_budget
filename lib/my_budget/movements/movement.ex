@@ -13,8 +13,6 @@ defmodule MyBudget.Movements.Movement do
     field :user_id, :id
     field :expend_date, :date
 
-    field :formatted_expend_date, :string, virtual: true
-    field :formatted_amount, :string, virtual: true
     # Valor em reais digitado no formulário (ex.: "1.234,56"); convertido para
     # centavos em `:amount` pela changeset.
     field :amount_reais, :string, virtual: true
