@@ -33,8 +33,24 @@ if config_env() == :prod do
 
   maybe_ipv6 = if System.get_env("ECTO_IPV6") in ~w(true 1), do: [:inet6], else: []
 
+  # Heroku Postgres (and most managed providers) require TLS. The Essential tier
+  # presents AWS RDS certificates that aren't in the system trust store, so peer
+  # verification is off by default; set DB_SSL_VERIFY_PEER=true (Advanced tier or
+  # above, where `sslrootcert=system` works) to turn it on.
+  maybe_ssl =
+    cond do
+      System.get_env("DB_SSL") in ~w(false 0) ->
+        false
+
+      System.get_env("DB_SSL_VERIFY_PEER") in ~w(true 1) ->
+        [cacerts: :public_key.cacerts_get(), verify: :verify_peer]
+
+      true ->
+        [verify: :verify_none]
+    end
+
   config :my_budget, MyBudget.Repo,
-    # ssl: true,
+    ssl: maybe_ssl,
     url: database_url,
     pool_size: String.to_integer(System.get_env("POOL_SIZE") || "10"),
     # For machines with several cores, consider starting multiple pools of `pool_size`
