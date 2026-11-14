@@ -5,6 +5,7 @@ defmodule MyBudgetWeb.PaymentMethodController do
 
   alias MyBudget.Movements
   alias MyBudget.Movements.PaymentMethod
+  alias MyBudgetWeb.Format
 
   def index(conn, _params) do
     payment_method_collection = Movements.list_payment_method(conn.assigns.current_scope)
@@ -36,10 +37,30 @@ defmodule MyBudgetWeb.PaymentMethodController do
     end
   end
 
-  def show(conn, %{"id" => id}) do
-    payment_method = Movements.get_payment_method!(conn.assigns.current_scope, id)
+  def show(conn, %{"id" => id} = params) do
+    scope = conn.assigns.current_scope
+    payment_method = Movements.get_payment_method!(scope, id)
+    {month, year} = reference_month(params)
+    period = PaymentMethod.period(payment_method, year, month)
 
-    render(conn, :show, page_title: "Método de Pagamento", payment_method: payment_method)
+    movements =
+      Movements.list_movements_by_payment_method(
+        scope,
+        payment_method.id,
+        period.start_date,
+        period.end_date
+      )
+
+    render(conn, :show,
+      page_title: payment_method.name,
+      payment_method: payment_method,
+      period: period,
+      movements: movements,
+      totals: totals(movements),
+      current_period: reference(month, year),
+      previous_period: shift_reference(month, year, -1),
+      next_period: shift_reference(month, year, 1)
+    )
   end
 
   def edit(conn, %{"id" => id} = params) do
@@ -86,6 +107,47 @@ defmodule MyBudgetWeb.PaymentMethodController do
     else
       error -> {conn, error}
     end
+  end
+
+  # O mês de referência vem da URL (`?m=11&y=2026`), como na home. Entradas
+  # inválidas caem no mês atual em vez de derrubar a página.
+  defp reference_month(%{"m" => month, "y" => year}) do
+    with {month, ""} <- Integer.parse(month),
+         {year, ""} <- Integer.parse(year),
+         true <- month in 1..12 and year in 1900..2999 do
+      {month, year}
+    else
+      _ -> current_reference_month()
+    end
+  end
+
+  defp reference_month(_params), do: current_reference_month()
+
+  defp current_reference_month do
+    today = Date.utc_today()
+    {today.month, today.year}
+  end
+
+  defp reference(month, year),
+    do: %{month: month, year: year, month_name: Format.month_name(month)}
+
+  defp shift_reference(month, year, months) do
+    date = year |> Date.new!(month, 1) |> Date.shift(month: months)
+    reference(date.month, date.year)
+  end
+
+  defp totals(movements) do
+    credit = sum_by_type(movements, "credit")
+    debit = sum_by_type(movements, "debit")
+
+    %{credit: credit, debit: debit, balance: credit - debit, invoice: debit - credit}
+  end
+
+  defp sum_by_type(movements, type) do
+    movements
+    |> Enum.filter(&(&1.type == type))
+    |> Enum.map(& &1.amount)
+    |> Enum.sum()
   end
 
   defp return_to("show"), do: "show"

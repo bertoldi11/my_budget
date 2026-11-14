@@ -50,6 +50,37 @@ defmodule MyBudgetWeb.MovementControllerTest do
       assert response =~ "Moradia / Aluguel"
       assert response =~ "Pix"
     end
+
+    test "pre-selects the payment method and keeps the origin when it comes from one", %{
+      conn: conn,
+      payment_method: payment_method
+    } do
+      conn =
+        get(
+          conn,
+          ~p"/movement/new?payment_method_id=#{payment_method.id}&return_to=payment_method&m=11&y=2026"
+        )
+
+      response = html_response(conn, 200)
+
+      assert element?(
+               response,
+               ~s(select#movement_payment_method_id option[value="#{payment_method.id}"][selected])
+             )
+
+      assert element?(
+               response,
+               ~s(#movement-form input[name="return_to"][value="payment_method"])
+             )
+
+      assert element?(response, ~s(#movement-form input[name="m"][value="11"]))
+      assert element?(response, ~s(#movement-form input[name="y"][value="2026"]))
+
+      assert element?(
+               response,
+               ~s(#movement-form a[href="/payment_method/#{payment_method.id}?m=11&y=2026"])
+             )
+    end
   end
 
   describe "create movement" do
@@ -61,11 +92,57 @@ defmodule MyBudgetWeb.MovementControllerTest do
       assert html_response(conn, 200) =~ "some description"
     end
 
+    test "redirects to the payment method period when it is the origin",
+         %{conn: conn, payment_method: payment_method} = context do
+      conn =
+        post(conn, ~p"/movement",
+          movement: create_attrs(context),
+          return_to: "payment_method",
+          m: "11",
+          y: "2026"
+        )
+
+      assert redirected_to(conn) == ~p"/payment_method/#{payment_method}?m=11&y=2026"
+    end
+
+    test "redirects to the payment method without a period when none is given",
+         %{conn: conn, payment_method: payment_method} = context do
+      conn =
+        post(conn, ~p"/movement", movement: create_attrs(context), return_to: "payment_method")
+
+      assert redirected_to(conn) == ~p"/payment_method/#{payment_method}"
+    end
+
     test "renders errors when data is invalid", %{conn: conn} do
       conn = post(conn, ~p"/movement", movement: @invalid_attrs)
       response = html_response(conn, 200)
       assert response =~ "Nova Movimentação"
       assert response =~ "can&#39;t be blank"
+    end
+
+    test "keeps the payment method origin when data is invalid", %{
+      conn: conn,
+      payment_method: payment_method
+    } do
+      conn =
+        post(conn, ~p"/movement",
+          movement: Map.put(@invalid_attrs, :payment_method_id, payment_method.id),
+          return_to: "payment_method",
+          m: "11",
+          y: "2026"
+        )
+
+      response = html_response(conn, 200)
+
+      assert element?(
+               response,
+               ~s(#movement-form input[name="return_to"][value="payment_method"])
+             )
+
+      assert element?(
+               response,
+               ~s(#movement-form a[href="/payment_method/#{payment_method.id}?m=11&y=2026"])
+             )
     end
   end
 
@@ -125,6 +202,10 @@ defmodule MyBudgetWeb.MovementControllerTest do
         get(conn, ~p"/movement/#{movement}")
       end
     end
+  end
+
+  defp element?(html, selector) do
+    html |> LazyHTML.from_document() |> LazyHTML.query(selector) |> Enum.any?()
   end
 
   defp create_movement(%{scope: scope, category: category, payment_method: payment_method}) do

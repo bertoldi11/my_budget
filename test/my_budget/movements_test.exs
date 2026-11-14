@@ -219,6 +219,99 @@ defmodule MyBudget.MovementsTest do
       assert Enum.map(Movements.list_movement(other_scope), & &1.id) == [other_movement.id]
     end
 
+    test "list_movements_by_payment_method/4 returns only the scoped movements inside the period" do
+      scope = user_scope_fixture()
+      other_scope = user_scope_fixture()
+      payment_method = payment_method_fixture(scope)
+      other_payment_method = payment_method_fixture(scope)
+
+      inside =
+        movement_fixture(scope, %{
+          payment_method_id: payment_method.id,
+          expend_date: ~D[2026-11-10]
+        })
+
+      first_day =
+        movement_fixture(scope, %{
+          payment_method_id: payment_method.id,
+          expend_date: ~D[2026-11-01]
+        })
+
+      last_day =
+        movement_fixture(scope, %{
+          payment_method_id: payment_method.id,
+          expend_date: ~D[2026-11-30]
+        })
+
+      # Fora do período
+      movement_fixture(scope, %{payment_method_id: payment_method.id, expend_date: ~D[2026-10-31]})
+
+      movement_fixture(scope, %{payment_method_id: payment_method.id, expend_date: ~D[2026-12-01]})
+
+      # Outro método de pagamento
+      movement_fixture(scope, %{
+        payment_method_id: other_payment_method.id,
+        expend_date: ~D[2026-11-10]
+      })
+
+      # Outro usuário
+      other_movement = movement_fixture(other_scope, %{expend_date: ~D[2026-11-10]})
+
+      result =
+        Movements.list_movements_by_payment_method(
+          scope,
+          payment_method.id,
+          ~D[2026-11-01],
+          ~D[2026-11-30]
+        )
+
+      # Mais recentes primeiro, extremos do período incluídos.
+      assert Enum.map(result, & &1.id) == [last_day.id, inside.id, first_day.id]
+      refute other_movement.id in Enum.map(result, & &1.id)
+    end
+
+    test "list_movements_by_payment_method/4 preloads category and section" do
+      scope = user_scope_fixture()
+      payment_method = payment_method_fixture(scope)
+      section = section_fixture(scope, %{name: "Casa"})
+      category = category_fixture(scope, %{name: "Mercado", section_id: section.id})
+
+      movement_fixture(scope, %{
+        payment_method_id: payment_method.id,
+        category_id: category.id,
+        expend_date: ~D[2026-11-10]
+      })
+
+      assert [movement] =
+               Movements.list_movements_by_payment_method(
+                 scope,
+                 payment_method.id,
+                 ~D[2026-11-01],
+                 ~D[2026-11-30]
+               )
+
+      assert movement.category.name == "Mercado"
+      assert movement.category.section.name == "Casa"
+    end
+
+    test "list_movements_by_payment_method/4 does not leak another user's movements" do
+      scope = user_scope_fixture()
+      other_scope = user_scope_fixture()
+      other_payment_method = payment_method_fixture(other_scope)
+
+      movement_fixture(other_scope, %{
+        payment_method_id: other_payment_method.id,
+        expend_date: ~D[2026-11-10]
+      })
+
+      assert Movements.list_movements_by_payment_method(
+               scope,
+               other_payment_method.id,
+               ~D[2026-11-01],
+               ~D[2026-11-30]
+             ) == []
+    end
+
     test "get_movement!/2 returns the movement with given id" do
       scope = user_scope_fixture()
       movement = movement_fixture(scope)
