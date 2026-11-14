@@ -1,6 +1,7 @@
 <div class="rounded-box border border-base-300 bg-base-100 p-6">
   <.form for={@form} id="movement-form" action={@action} class="space-y-4">
     <input type="hidden" name="return_to" value={@return_to} />
+    <input :for={{name, value} <- @return_params} type="hidden" name={name} value={value} />
     <.input
       field={@form[:category_id]}
       type="select"

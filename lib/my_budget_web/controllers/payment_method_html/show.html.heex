@@ -1,26 +1,155 @@
 <Layouts.app flash={@flash} current_scope={@current_scope}>
   <.header>
-    Método de Pagamento: {@payment_method.id}
+    {@payment_method.name}
+    <:subtitle>{payment_method_type_label(@payment_method.type)}</:subtitle>
     <:actions>
       <.button href={~p"/payment_method"} class="btn btn-ghost">
         <.icon name="hero-arrow-left" />
       </.button>
-      <.button variant="primary" href={~p"/payment_method/#{@payment_method}/edit?return_to=show"}>
+      <.button href={~p"/payment_method/#{@payment_method}/edit?return_to=show"}>
         <.icon name="hero-pencil-square" /> Editar
+      </.button>
+      <.button
+        id="new-movement"
+        variant="primary"
+        href={new_movement_path(@payment_method, @current_period)}
+      >
+        <.icon name="hero-plus" /> Movimentação
       </.button>
     </:actions>
   </.header>
 
-  <div class="rounded-box border border-base-300 bg-base-100 p-2">
+  <%!-- Dados do cartão de crédito --%>
+  <div
+    :if={@payment_method.type == "cartao_credito"}
+    class="rounded-box border border-base-300 bg-base-100 p-2"
+  >
     <.list>
-      <:item title="Nome">{@payment_method.name}</:item>
-      <:item title="Tipo">{payment_method_type_label(@payment_method.type)}</:item>
-      <:item :if={@payment_method.type == "cartao_credito"} title="Dia de Vencimento">
-        {@payment_method.due_day}
-      </:item>
-      <:item :if={@payment_method.type == "cartao_credito"} title="Dia de Fechamento">
-        {@payment_method.closing_day}
-      </:item>
+      <:item title="Dia de Fechamento">{@payment_method.closing_day}</:item>
+      <:item title="Dia de Vencimento">{@payment_method.due_day}</:item>
     </.list>
   </div>
+
+  <%!-- Navegação de período --%>
+  <div class="flex items-center justify-between gap-2">
+    <.link
+      id="previous-period"
+      href={
+        ~p"/payment_method/#{@payment_method}?m=#{@previous_period.month}&y=#{@previous_period.year}"
+      }
+      class="btn btn-ghost btn-sm"
+    >
+      <.icon name="hero-arrow-left" />
+      <span class="hidden sm:inline">
+        {@previous_period.month_name}/{@previous_period.year}
+      </span>
+    </.link>
+
+    <div class="text-center">
+      <h2 class="text-lg font-semibold capitalize">{period_title(@period, @current_period)}</h2>
+      <p class="text-xs text-base-content/60">{period_subtitle(@period)}</p>
+    </div>
+
+    <.link
+      id="next-period"
+      href={~p"/payment_method/#{@payment_method}?m=#{@next_period.month}&y=#{@next_period.year}"}
+      class="btn btn-ghost btn-sm"
+    >
+      <span class="hidden sm:inline">{@next_period.month_name}/{@next_period.year}</span>
+      <.icon name="hero-arrow-right" />
+    </.link>
+  </div>
+
+  <%!-- Totais do período --%>
+  <div class="grid grid-cols-3 gap-2 sm:gap-3">
+    <div class="rounded-box border border-base-300 bg-base-100 p-3 sm:p-4">
+      <p class="text-[11px] uppercase tracking-wide text-base-content/60 sm:text-xs">Entradas</p>
+      <p
+        id="period-credit"
+        class="mt-1 text-sm font-semibold tabular-nums text-success sm:text-base"
+      >
+        {format_amount(@totals.credit)}
+      </p>
+    </div>
+    <div class="rounded-box border border-base-300 bg-base-100 p-3 sm:p-4">
+      <p class="text-[11px] uppercase tracking-wide text-base-content/60 sm:text-xs">Saídas</p>
+      <p id="period-debit" class="mt-1 text-sm font-semibold tabular-nums text-error sm:text-base">
+        {format_amount(@totals.debit)}
+      </p>
+    </div>
+    <% {result_label, result_amount} = period_result(@period, @totals) %>
+    <div class="rounded-box bg-primary text-primary-content p-3 shadow-sm sm:p-4">
+      <p class="text-[11px] uppercase tracking-wide opacity-80 sm:text-xs">{result_label}</p>
+      <p id="period-result" class="mt-1 text-sm font-semibold tabular-nums sm:text-base">
+        {format_amount(result_amount)}
+      </p>
+    </div>
+  </div>
+
+  <%!-- Estado vazio --%>
+  <div
+    :if={@movements == []}
+    id="payment-method-movements-empty"
+    class="rounded-box border border-dashed border-base-300 py-12 text-center"
+  >
+    <.icon name="hero-arrows-right-left" class="mx-auto size-10 text-base-content/40" />
+    <p class="mt-2 font-medium">Nenhuma movimentação neste período</p>
+    <p class="text-sm text-base-content/60">
+      Nada foi pago com {@payment_method.name} entre {short_date(@period.start_date)} e {short_date(
+        @period.end_date
+      )}.
+    </p>
+    <.button
+      id="new-movement-empty"
+      href={new_movement_path(@payment_method, @current_period)}
+      class="btn btn-primary mt-4"
+    >
+      <.icon name="hero-plus" /> Cadastrar movimentação
+    </.button>
+  </div>
+
+  <%!-- Movimentações do período --%>
+  <section
+    :if={@movements != []}
+    id="payment-method-movements"
+    class="rounded-box border border-base-300 bg-base-100 overflow-hidden"
+  >
+    <header class="flex items-center justify-between gap-2 border-b border-base-200 px-4 py-3">
+      <h3 class="font-semibold">Movimentações</h3>
+      <span class="text-xs text-base-content/60">
+        {length(@movements)} {if(length(@movements) == 1, do: "lançamento", else: "lançamentos")}
+      </span>
+    </header>
+
+    <ul class="divide-y divide-base-200">
+      <li
+        :for={movement <- @movements}
+        id={"payment-method-movement-#{movement.id}"}
+        class="group flex items-center justify-between gap-3 px-4 py-3 hover:bg-base-200/50"
+      >
+        <div class="min-w-0 flex-1">
+          <.link href={~p"/movement/#{movement}"} class="font-medium hover:underline">
+            {movement.category.section.name} / {movement.category.name}
+          </.link>
+          <p class="truncate text-sm text-base-content/60">
+            {format_date(movement.expend_date)}
+            <span :if={movement.counter_party not in [nil, ""]}>· {movement.counter_party}</span>
+          </p>
+          <p
+            :if={movement.description not in [nil, ""]}
+            class="truncate text-sm text-base-content/50"
+          >
+            {movement.description}
+          </p>
+        </div>
+
+        <div class="text-right">
+          <p class={["font-semibold tabular-nums", movement_type_class(movement.type)]}>
+            {format_amount(movement.amount)}
+          </p>
+          <p class="text-xs text-base-content/60">{movement_type_label(movement.type)}</p>
+        </div>
+      </li>
+    </ul>
+  </section>
 </Layouts.app>

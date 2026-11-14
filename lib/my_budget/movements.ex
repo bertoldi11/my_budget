@@ -503,6 +503,34 @@ defmodule MyBudget.Movements do
   end
 
   @doc """
+  Returns the movements of a given payment method whose `expend_date` falls
+  within `start_date` and `end_date` (both inclusive), most recent first, with
+  `:category` (and its `:section`) preloaded.
+
+  Used by the payment method page to list the movements of the current period.
+
+  ## Examples
+
+      iex> list_movements_by_payment_method(scope, 1, ~D[2026-11-01], ~D[2026-11-30])
+      [%Movement{}, ...]
+
+  """
+  def list_movements_by_payment_method(
+        %Scope{} = scope,
+        payment_method_id,
+        %Date{} = start_date,
+        %Date{} = end_date
+      ) do
+    Movement
+    |> where([m], m.user_id == ^scope.user.id)
+    |> where([m], m.payment_method_id == ^payment_method_id)
+    |> where([m], m.expend_date >= ^start_date and m.expend_date <= ^end_date)
+    |> order_by([m], desc: m.expend_date, desc: m.id)
+    |> Repo.all()
+    |> Repo.preload(category: :section)
+  end
+
+  @doc """
   Gets a single movement.
 
   Raises `Ecto.NoResultsError` if the Movement does not exist.

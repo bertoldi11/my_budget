@@ -48,7 +48,137 @@ defmodule MyBudgetWeb.PaymentMethodControllerTest do
 
     test "displays payment_method", %{conn: conn, payment_method: payment_method} do
       conn = get(conn, ~p"/payment_method/#{payment_method}")
-      assert html_response(conn, 200) =~ "Método de Pagamento: #{payment_method.id}"
+      response = html_response(conn, 200)
+      assert response =~ payment_method.name
+      assert response =~ "Conta Corrente"
+    end
+
+    test "links to the new movement form with this payment method and period", %{
+      conn: conn,
+      payment_method: payment_method
+    } do
+      conn = get(conn, ~p"/payment_method/#{payment_method}?m=11&y=2026")
+      response = html_response(conn, 200)
+
+      expected =
+        ~p"/movement/new?payment_method_id=#{payment_method.id}&return_to=payment_method&m=11&y=2026"
+
+      assert attr(response, "#new-movement", "href") == expected
+      assert attr(response, "#new-movement-empty", "href") == expected
+    end
+
+    test "shows an empty state when the period has no movements", %{
+      conn: conn,
+      payment_method: payment_method
+    } do
+      conn = get(conn, ~p"/payment_method/#{payment_method}?m=11&y=2026")
+
+      assert conn
+             |> html_response(200)
+             |> element?("#payment-method-movements-empty")
+    end
+
+    test "lists the movements of the requested month", %{
+      conn: conn,
+      scope: scope,
+      payment_method: payment_method
+    } do
+      inside =
+        movement_fixture(scope, %{
+          payment_method_id: payment_method.id,
+          expend_date: ~D[2026-11-10],
+          description: "compra de novembro"
+        })
+
+      outside =
+        movement_fixture(scope, %{
+          payment_method_id: payment_method.id,
+          expend_date: ~D[2026-10-10],
+          description: "compra de outubro"
+        })
+
+      conn = get(conn, ~p"/payment_method/#{payment_method}?m=11&y=2026")
+      response = html_response(conn, 200)
+
+      assert element?(response, "#payment-method-movement-#{inside.id}")
+      refute element?(response, "#payment-method-movement-#{outside.id}")
+      refute element?(response, "#payment-method-movements-empty")
+      assert response =~ "Novembro"
+    end
+
+    test "excludes movements of other payment methods", %{
+      conn: conn,
+      scope: scope,
+      payment_method: payment_method
+    } do
+      other_payment_method = payment_method_fixture(scope, %{name: "outro método"})
+
+      other_movement =
+        movement_fixture(scope, %{
+          payment_method_id: other_payment_method.id,
+          expend_date: ~D[2026-11-10]
+        })
+
+      conn = get(conn, ~p"/payment_method/#{payment_method}?m=11&y=2026")
+
+      refute conn
+             |> html_response(200)
+             |> element?("#payment-method-movement-#{other_movement.id}")
+    end
+
+    test "groups a credit card by its invoice cycle instead of the calendar month", %{
+      conn: conn,
+      scope: scope
+    } do
+      card =
+        payment_method_fixture(scope, %{
+          name: "cartão",
+          type: "cartao_credito",
+          closing_day: 3,
+          due_day: 10
+        })
+
+      # A fatura que vence em 10/11/2026 fecha em 03/11 e abre em 04/10.
+      in_invoice =
+        movement_fixture(scope, %{payment_method_id: card.id, expend_date: ~D[2026-10-20]})
+
+      after_closing =
+        movement_fixture(scope, %{payment_method_id: card.id, expend_date: ~D[2026-11-04]})
+
+      before_opening =
+        movement_fixture(scope, %{payment_method_id: card.id, expend_date: ~D[2026-10-03]})
+
+      conn = get(conn, ~p"/payment_method/#{card}?m=11&y=2026")
+      response = html_response(conn, 200)
+
+      assert element?(response, "#payment-method-movement-#{in_invoice.id}")
+      refute element?(response, "#payment-method-movement-#{after_closing.id}")
+      refute element?(response, "#payment-method-movement-#{before_opening.id}")
+      assert response =~ "Fatura de Novembro de 2026"
+      assert response =~ "Total da fatura"
+    end
+
+    test "navigates between periods", %{conn: conn, payment_method: payment_method} do
+      conn = get(conn, ~p"/payment_method/#{payment_method}?m=1&y=2026")
+      response = html_response(conn, 200)
+
+      assert attr(response, "#previous-period", "href") ==
+               ~p"/payment_method/#{payment_method}?m=12&y=2025"
+
+      assert attr(response, "#next-period", "href") ==
+               ~p"/payment_method/#{payment_method}?m=2&y=2026"
+    end
+
+    test "falls back to the current month on invalid period params", %{
+      conn: conn,
+      payment_method: payment_method
+    } do
+      today = Date.utc_today()
+
+      conn = get(conn, ~p"/payment_method/#{payment_method}?m=abc&y=0")
+
+      assert html_response(conn, 200) =~
+               "#{MyBudgetWeb.Format.month_name(today.month)} de #{today.year}"
     end
   end
 
@@ -106,5 +236,17 @@ defmodule MyBudgetWeb.PaymentMethodControllerTest do
 
   defp create_payment_method(%{scope: scope}) do
     %{payment_method: payment_method_fixture(scope)}
+  end
+
+  defp element?(html, selector) do
+    html |> LazyHTML.from_document() |> LazyHTML.query(selector) |> Enum.any?()
+  end
+
+  defp attr(html, selector, name) do
+    html
+    |> LazyHTML.from_document()
+    |> LazyHTML.query(selector)
+    |> LazyHTML.attribute(name)
+    |> List.first()
   end
 end

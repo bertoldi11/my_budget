@@ -1,7 +1,9 @@
 <Layouts.app flash={@flash} current_scope={@current_scope}>
   <.header>
     Métodos de Pagamento
-    <:subtitle>Como você paga suas movimentações.</:subtitle>
+    <:subtitle>
+      Como você paga suas movimentações. Abra um método para ver suas movimentações.
+    </:subtitle>
     <:actions>
       <.button variant="primary" href={~p"/payment_method/new"}>
         <.icon name="hero-plus" /> Novo
@@ -46,6 +48,13 @@
         </span>
 
         <div class="flex items-center gap-3 text-sm">
+          <.link
+            href={~p"/payment_method/#{payment_method}"}
+            class="inline-flex items-center gap-1 text-base-content/70 hover:text-primary"
+          >
+            <.icon name="hero-list-bullet" class="size-4" />
+            <span class="hidden sm:inline">Movimentações</span>
+          </.link>
           <.link
             href={~p"/payment_method/#{payment_method}/edit"}
             class="inline-flex items-center gap-1 text-base-content/70 hover:text-primary"

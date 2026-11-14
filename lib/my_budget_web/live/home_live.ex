@@ -3,7 +3,7 @@ defmodule MyBudgetWeb.HomeLive do
 
   alias MyBudget.Movements
   alias MyBudget.Movements.Movement
-  alias MyBudgetWeb.Cldr
+  alias MyBudgetWeb.Format
 
   def mount(_params, _session, socket) do
     {:ok,
@@ -196,28 +196,9 @@ defmodule MyBudgetWeb.HomeLive do
     {date.month, date.year}
   end
 
-  defp get_month_string(month) do
-    case month do
-      1 -> "Janeiro"
-      2 -> "Fevereiro"
-      3 -> "Março"
-      4 -> "Abril"
-      5 -> "Maio"
-      6 -> "Junho"
-      7 -> "Julho"
-      8 -> "Agosto"
-      9 -> "Setembro"
-      10 -> "Outubro"
-      11 -> "Novembro"
-      12 -> "Dezembro"
-      _ -> "Mês inválido"
-    end
-  end
+  defp get_month_string(month), do: Format.month_name(month)
 
-  defp format_date(%Date{} = date), do: Calendar.strftime(date, "%d/%m/%Y")
+  defp format_date(%Date{} = date), do: Format.date(date)
 
-  defp format_amount(amount) do
-    {:ok, formatted} = Cldr.Number.to_string(amount / 100, locale: "pt", currency: "BRL")
-    formatted
-  end
+  defp format_amount(amount), do: Format.amount(amount)
 end
