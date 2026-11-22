@@ -73,6 +73,11 @@ config :logger, :default_formatter,
 # Use Jason for JSON parsing in Phoenix
 config :phoenix, :json_library, Jason
 
+# Origens liberadas no /api para o build web do my_budget_mobile (ver
+# `MyBudgetWeb.ApiCors`). O padrão não libera nenhuma; produção preenche pela
+# variável de ambiente CORS_ORIGINS em config/runtime.exs.
+config :my_budget, :cors_origins, []
+
 # Import environment specific config. This must remain at the bottom
 # of this file so it overrides the configuration defined above.
 import_config "#{config_env()}.exs"

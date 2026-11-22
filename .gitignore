@@ -35,3 +35,15 @@ my_budget-*.tar
 npm-debug.log
 /assets/node_modules/
 
+# Variáveis de ambiente locais. O README manda criar um `.env` com
+# DATABASE_URL e SECRET_KEY_BASE — segredo de verdade, que nunca entra no git.
+.env
+.env.*
+!.env.example
+
+# Material de assinatura e certificados, caso algum dia encoste no projeto.
+*.pem
+*.key
+*.p12
+*.pfx
+

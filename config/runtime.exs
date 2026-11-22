@@ -73,6 +73,21 @@ if config_env() == :prod do
 
   config :my_budget, :dns_cluster_query, System.get_env("DNS_CLUSTER_QUERY")
 
+  # Origens liberadas no /api para o build web do my_budget_mobile, separadas
+  # por vírgula:
+  #
+  #     CORS_ORIGINS="https://app.exemplo.com,https://preview.exemplo.com"
+  #
+  # Sem a variável, nenhuma origem externa é liberada — os apps iOS e Android
+  # não passam por CORS e seguem funcionando (ver `MyBudgetWeb.ApiCors`).
+  config :my_budget,
+         :cors_origins,
+         "CORS_ORIGINS"
+         |> System.get_env("")
+         |> String.split(",", trim: true)
+         |> Enum.map(&String.trim/1)
+         |> Enum.reject(&(&1 == ""))
+
   config :my_budget, MyBudgetWeb.Endpoint,
     url: [host: host, port: 443, scheme: "https"],
     http: [

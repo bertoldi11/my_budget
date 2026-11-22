@@ -43,6 +43,10 @@ defmodule MyBudgetWeb.Endpoint do
   plug Plug.RequestId
   plug Plug.Telemetry, event_prefix: [:phoenix, :endpoint]
 
+  # CORS do /api, para o build web do my_budget_mobile. Fica aqui, e não num
+  # pipeline do router, porque o preflight é um OPTIONS que nenhuma rota casa.
+  plug MyBudgetWeb.ApiCors
+
   plug Plug.Parsers,
     parsers: [:urlencoded, :multipart, :json],
     pass: ["*/*"],

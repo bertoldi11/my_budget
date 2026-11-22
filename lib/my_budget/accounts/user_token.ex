@@ -11,6 +11,7 @@ defmodule MyBudget.Accounts.UserToken do
   @magic_link_validity_in_minutes 15
   @change_email_validity_in_days 7
   @session_validity_in_days 14
+  @api_token_validity_in_days 60
 
   schema "users_tokens" do
     field :token, :binary
@@ -149,6 +150,69 @@ defmodule MyBudget.Accounts.UserToken do
         :error
     end
   end
+
+  @doc """
+  Builds an API token to be used as a bearer token by the mobile app.
+
+  Only the hash is stored in the database, like the email tokens: the encoded
+  token is returned once and cannot be reconstructed from the database, so
+  read-only access to it does not grant API access.
+  """
+  def build_api_token(user) do
+    token = :crypto.strong_rand_bytes(@rand_size)
+    hashed_token = :crypto.hash(@hash_algorithm, token)
+
+    {Base.url_encode64(token, padding: false),
+     %UserToken{
+       token: hashed_token,
+       context: "api",
+       authenticated_at: DateTime.utc_now(:second),
+       user_id: user.id
+     }}
+  end
+
+  @doc """
+  Checks if the API token is valid and returns its underlying lookup query.
+
+  The query returns the user found by the token, if any. The token is valid if
+  its hash matches the stored one and it has not expired (after
+  @api_token_validity_in_days).
+  """
+  def verify_api_token_query(token) when is_binary(token) do
+    case Base.url_decode64(token, padding: false) do
+      {:ok, decoded_token} ->
+        hashed_token = :crypto.hash(@hash_algorithm, decoded_token)
+
+        query =
+          from token in by_token_and_context_query(hashed_token, "api"),
+            join: user in assoc(token, :user),
+            where: token.inserted_at > ago(^@api_token_validity_in_days, "day"),
+            select: %{user | authenticated_at: token.authenticated_at}
+
+        {:ok, query}
+
+      :error ->
+        :error
+    end
+  end
+
+  def verify_api_token_query(_token), do: :error
+
+  @doc """
+  Returns the query that looks up a single API token, to revoke it on log out.
+  """
+  def by_api_token_query(token) when is_binary(token) do
+    case Base.url_decode64(token, padding: false) do
+      {:ok, decoded_token} ->
+        hashed_token = :crypto.hash(@hash_algorithm, decoded_token)
+        {:ok, by_token_and_context_query(hashed_token, "api")}
+
+      :error ->
+        :error
+    end
+  end
+
+  def by_api_token_query(_token), do: :error
 
   defp by_token_and_context_query(token, context) do
     from UserToken, where: [token: ^token, context: ^context]
