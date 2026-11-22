@@ -3,6 +3,8 @@ defmodule MyBudgetWeb.SectionControllerTest do
 
   import MyBudget.MovementsFixtures
 
+  alias MyBudget.Movements
+
   @create_attrs %{name: "some name"}
   @update_attrs %{name: "some updated name"}
   @invalid_attrs %{name: nil}
@@ -16,6 +18,36 @@ defmodule MyBudgetWeb.SectionControllerTest do
       response = html_response(conn, 200)
       assert response =~ "Sessões"
       assert response =~ section.name
+    end
+
+    test "separates active and inactive sections", %{conn: conn, scope: scope} do
+      active = section_fixture(scope, %{name: "Casa"})
+      inactive = section_fixture(scope, %{name: "Antiga", active: false})
+
+      response = conn |> get(~p"/section") |> html_response(200)
+      document = LazyHTML.from_document(response)
+
+      assert count(document, "#active-sections #section-#{active.id}") == 1
+      assert count(document, "#active-sections #section-#{inactive.id}") == 0
+      assert count(document, "#inactive-sections #section-#{inactive.id}") == 1
+      assert count(document, "#inactive-sections #section-#{active.id}") == 0
+    end
+
+    test "hides the inactive block when every section is active", %{conn: conn, scope: scope} do
+      section_fixture(scope)
+
+      document = conn |> get(~p"/section") |> html_response(200) |> LazyHTML.from_document()
+
+      assert count(document, "#active-sections") == 1
+      assert count(document, "#inactive-sections") == 0
+    end
+
+    test "deactivates a section from the edit form", %{conn: conn, scope: scope} do
+      section = section_fixture(scope)
+
+      conn = put(conn, ~p"/section/#{section}", section: %{active: "false"})
+      assert redirected_to(conn) == ~p"/section"
+      refute Movements.get_section!(scope, section.id).active
     end
   end
 
@@ -94,9 +126,32 @@ defmodule MyBudgetWeb.SectionControllerTest do
         get(conn, ~p"/section/#{section}")
       end
     end
+
+    test "does not delete a section with categories", %{
+      conn: conn,
+      scope: scope,
+      section: section
+    } do
+      category_fixture(scope, %{section_id: section.id})
+
+      response = conn |> get(~p"/section") |> html_response(200)
+      document = LazyHTML.from_document(response)
+
+      assert document |> LazyHTML.query("#delete-section-disabled-#{section.id}") |> Enum.count() ==
+               1
+
+      assert document |> LazyHTML.query("#delete-section-#{section.id}") |> Enum.count() == 0
+
+      conn = delete(conn, ~p"/section/#{section}")
+      assert redirected_to(conn) == ~p"/section"
+      assert Phoenix.Flash.get(conn.assigns.flash, :error) =~ "possui categorias"
+      assert Movements.get_section!(scope, section.id)
+    end
   end
 
   defp create_section(%{scope: scope}) do
     %{section: section_fixture(scope)}
   end
+
+  defp count(document, selector), do: document |> LazyHTML.query(selector) |> Enum.count()
 end

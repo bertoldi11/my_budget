@@ -54,7 +54,12 @@ defmodule MyBudgetWeb.BudgetLive.Show do
         %{"from_category" => from_id, "to_category" => to_id},
         socket
       ) do
-    redirects = Map.put(socket.assigns.rollover_redirects, from_id, to_id)
+    redirects =
+      case to_id do
+        "" -> Map.delete(socket.assigns.rollover_redirects, from_id)
+        to_id -> Map.put(socket.assigns.rollover_redirects, from_id, to_id)
+      end
+
     {:noreply, assign(socket, :rollover_redirects, redirects)}
   end
 
@@ -202,7 +207,8 @@ defmodule MyBudgetWeb.BudgetLive.Show do
 
   defp assign_budget_data(socket, scope, budget) do
     incomes = Budget.list_incomes(scope, budget)
-    sections = Budget.list_budget_active_sections(scope)
+    sections = Budget.list_budget_sections(scope, budget)
+    rollover_targets = Budget.list_budget_active_sections(scope)
     allocations = Budget.list_allocations(scope, budget)
     spent_map = Budget.actual_spent_by_category(scope, budget)
     total_in = Budget.total_income(scope, budget)
@@ -214,6 +220,7 @@ defmodule MyBudgetWeb.BudgetLive.Show do
     |> assign(:budget, budget)
     |> assign(:incomes, incomes)
     |> assign(:sections, sections)
+    |> assign(:rollover_targets, rollover_targets)
     |> assign(:allocation_map, allocation_map)
     |> assign(:spent_map, spent_map)
     |> assign(:total_income, total_in)

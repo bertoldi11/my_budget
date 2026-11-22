@@ -9,12 +9,19 @@ defmodule MyBudgetWeb.CategoryController do
   alias MyBudget.Movements.Category
 
   def index(conn, _params) do
-    sections =
-      conn.assigns.current_scope
+    scope = conn.assigns.current_scope
+    # Ativa = categoria e sessão ativas; o resto vai para o bloco de inativas.
+    {active, inactive} =
+      scope
       |> Movements.list_category()
-      |> sections_with_categories()
+      |> Enum.split_with(&(&1.active and &1.section.active))
 
-    render(conn, :index, page_title: "Categorias", sections: sections)
+    render(conn, :index,
+      page_title: "Categorias",
+      active_groups: sections_with_categories(active),
+      inactive_groups: sections_with_categories(inactive),
+      category_ids_with_movements: Movements.category_ids_with_movements(scope)
+    )
   end
 
   def new(conn, _params) do
@@ -34,7 +41,7 @@ defmodule MyBudgetWeb.CategoryController do
       |> assign(:show_budget_toggle, Scope.budget_enabled?(scope))
 
     with {:ok, category} <- Movements.create_category(scope, category_params) do
-      if Scope.budget_enabled?(scope) and category.budget_active do
+      if Scope.budget_enabled?(scope) and category.budget_active and category.active do
         redirect(conn, to: ~p"/category/#{category}/budget_confirm")
       else
         conn
@@ -86,12 +93,19 @@ defmodule MyBudgetWeb.CategoryController do
     scope = conn.assigns.current_scope
     category = Movements.get_category!(scope, id)
 
-    with {:ok, _category} <- Movements.delete_category(scope, category) do
-      conn
-      |> put_flash(:info, "Categoria apagada com sucesso!")
-      |> redirect(to: ~p"/category")
-    else
-      error -> {conn, error}
+    case Movements.delete_category(scope, category) do
+      {:ok, _category} ->
+        conn
+        |> put_flash(:info, "Categoria apagada com sucesso!")
+        |> redirect(to: ~p"/category")
+
+      {:error, :has_movements} ->
+        conn
+        |> put_flash(
+          :error,
+          "A categoria possui movimentações e não pode ser apagada. Desative-a para escondê-la."
+        )
+        |> redirect(to: ~p"/category")
     end
   end
 
@@ -106,12 +120,18 @@ defmodule MyBudgetWeb.CategoryController do
     category = Movements.get_category!(scope, id)
     today = Date.utc_today()
 
-    {:ok, budget} = Budget.get_or_create_monthly_budget(scope, today.year, today.month)
-    Budget.upsert_allocation(scope, budget, category.id, 0)
+    if Movements.category_available?(scope, category.id) do
+      {:ok, budget} = Budget.get_or_create_monthly_budget(scope, today.year, today.month)
+      Budget.upsert_allocation(scope, budget, category.id, 0)
 
-    conn
-    |> put_flash(:info, "Categoria adicionada ao orçamento de #{format_month(today)}!")
-    |> redirect(to: ~p"/budget/#{today.year}/#{today.month}")
+      conn
+      |> put_flash(:info, "Categoria adicionada ao orçamento de #{format_month(today)}!")
+      |> redirect(to: ~p"/budget/#{today.year}/#{today.month}")
+    else
+      conn
+      |> put_flash(:error, "Categoria desativada não pode entrar no orçamento.")
+      |> redirect(to: ~p"/category")
+    end
   end
 
   defp render_new(conn, changeset) do
@@ -141,14 +161,20 @@ defmodule MyBudgetWeb.CategoryController do
   defp sections_options(scope) do
     scope
     |> Movements.list_section()
-    |> Enum.map(&{&1.name, &1.id})
+    |> Enum.sort_by(& &1.name)
+    |> Enum.map(fn
+      %{active: true} = section -> {section.name, section.id}
+      section -> {"#{section.name} (desativada)", section.id}
+    end)
   end
 
   defp sections_with_categories(categories) do
     categories
     |> Enum.group_by(& &1.section)
-    |> Enum.map(fn {section, categories} -> %{section: section, categories: categories} end)
-    |> Enum.sort_by(& &1.section.name)
+    |> Enum.map(fn {section, categories} ->
+      %{section: section, categories: Enum.sort_by(categories, &String.downcase(&1.name))}
+    end)
+    |> Enum.sort_by(&String.downcase(&1.section.name))
   end
 
   defp return_to("show"), do: "show"

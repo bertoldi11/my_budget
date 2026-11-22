@@ -3,6 +3,8 @@ defmodule MyBudgetWeb.MovementControllerTest do
 
   import MyBudget.MovementsFixtures
 
+  alias MyBudget.Movements
+
   @invalid_attrs %{amount: nil, description: nil, counter_party: nil, type: nil}
 
   setup :register_and_log_in_user
@@ -113,6 +115,50 @@ defmodule MyBudgetWeb.MovementControllerTest do
       assert redirected_to(conn) == ~p"/payment_method/#{payment_method}"
     end
 
+    test "creates one movement per installment", %{conn: conn, scope: scope} = context do
+      attrs =
+        context
+        |> create_attrs()
+        |> Map.drop([:amount])
+        |> Map.merge(%{amount_reais: "200,00", installments: "2"})
+
+      conn = post(conn, ~p"/movement", movement: attrs)
+      assert redirected_to(conn) == ~p"/movement"
+      assert Phoenix.Flash.get(conn.assigns.flash, :info) =~ "2 parcelas"
+
+      assert scope |> Movements.list_movement() |> Enum.map(& &1.amount) == [10_000, 10_000]
+    end
+
+    test "does not offer deactivated categories or categories of deactivated sections",
+         %{conn: conn, scope: scope, category: category} do
+      inactive =
+        category_fixture(scope, %{name: "Gás", section_id: category.section_id, active: false})
+
+      inactive_section = section_fixture(scope, %{name: "Antiga", active: false})
+
+      in_inactive_section =
+        category_fixture(scope, %{name: "Velha", section_id: inactive_section.id})
+
+      response = conn |> get(~p"/movement/new") |> html_response(200)
+
+      assert element?(response, ~s(select#movement_category_id option[value="#{category.id}"]))
+      refute element?(response, ~s(select#movement_category_id option[value="#{inactive.id}"]))
+
+      refute element?(
+               response,
+               ~s(select#movement_category_id option[value="#{in_inactive_section.id}"])
+             )
+    end
+
+    test "shows the installments field only when creating", %{conn: conn} do
+      response = conn |> get(~p"/movement/new") |> html_response(200)
+
+      assert element?(
+               response,
+               ~s(#movement-form input[name="movement[installments]"][value="1"])
+             )
+    end
+
     test "renders errors when data is invalid", %{conn: conn} do
       conn = post(conn, ~p"/movement", movement: @invalid_attrs)
       response = html_response(conn, 200)
@@ -161,6 +207,20 @@ defmodule MyBudgetWeb.MovementControllerTest do
     test "renders form for editing chosen movement", %{conn: conn, movement: movement} do
       conn = get(conn, ~p"/movement/#{movement}/edit")
       assert html_response(conn, 200) =~ "Editar Movimentação"
+    end
+
+    test "keeps showing the movement's category after it is deactivated",
+         %{conn: conn, scope: scope, movement: movement, category: category} do
+      {:ok, _} = Movements.update_category(scope, category, %{active: false})
+
+      response = conn |> get(~p"/movement/#{movement}/edit") |> html_response(200)
+
+      assert element?(
+               response,
+               ~s(select#movement_category_id option[value="#{category.id}"][selected])
+             )
+
+      assert response =~ "Aluguel (desativada)"
     end
   end
 

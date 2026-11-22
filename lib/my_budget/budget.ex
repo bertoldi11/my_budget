@@ -118,6 +118,24 @@ defmodule MyBudget.Budget do
     |> tap_update_status(scope, budget)
   end
 
+  @doc """
+  Deletes the allocations of the category in every budget of the scope and
+  recalculates the status of the affected budgets.
+  """
+  def delete_category_allocations(%Scope{} = scope, %Category{} = category) do
+    query = where(BudgetAllocation, user_id: ^scope.user.id, category_id: ^category.id)
+
+    budget_ids = query |> select([a], a.monthly_budget_id) |> Repo.all()
+    {count, _} = Repo.delete_all(query)
+
+    MonthlyBudget
+    |> where([b], b.id in ^budget_ids)
+    |> Repo.all()
+    |> Enum.each(&update_budget_status(scope, &1))
+
+    count
+  end
+
   def total_allocated(%Scope{} = scope, %MonthlyBudget{} = budget) do
     BudgetAllocation
     |> where(user_id: ^scope.user.id, monthly_budget_id: ^budget.id)
@@ -134,15 +152,70 @@ defmodule MyBudget.Budget do
   # Modifies Movements schemas; queries delegated here for convenience.
   # ---------------------------------------------------------------------------
 
+  @doc """
+  Sections and categories that can be used in a budget: marked as active in
+  the budget (`budget_active`) and not deactivated (`active`).
+  """
   def list_budget_active_sections(%Scope{} = scope) do
     Section
-    |> where(user_id: ^scope.user.id, budget_active: true)
-    |> preload(:categories)
+    |> where(user_id: ^scope.user.id, budget_active: true, active: true)
+    |> order_by(:name)
+    |> preload(categories: ^from(c in Category, order_by: c.name))
     |> Repo.all()
     |> Enum.map(fn section ->
-      active_cats = Enum.filter(section.categories, & &1.budget_active)
-      %{section | categories: active_cats}
+      %{section | categories: Enum.filter(section.categories, &budget_eligible?(section, &1))}
     end)
+  end
+
+  @doc """
+  Sections and categories shown in the given budget: the ones that can be used
+  in a budget plus any category that already has an allocation in it, even if
+  it was deactivated afterwards (so old budgets keep their history).
+  """
+  def list_budget_sections(%Scope{} = scope, %MonthlyBudget{} = budget) do
+    allocated_ids =
+      BudgetAllocation
+      |> where(user_id: ^scope.user.id, monthly_budget_id: ^budget.id)
+      |> select([a], a.category_id)
+      |> Repo.all()
+      |> MapSet.new()
+
+    Section
+    |> where(user_id: ^scope.user.id)
+    |> order_by(:name)
+    |> preload(categories: ^from(c in Category, order_by: c.name))
+    |> Repo.all()
+    |> Enum.map(fn section ->
+      categories =
+        Enum.filter(section.categories, fn category ->
+          budget_eligible?(section, category) or MapSet.member?(allocated_ids, category.id)
+        end)
+
+      %{section | categories: categories}
+    end)
+    |> Enum.reject(&(&1.categories == []))
+  end
+
+  @doc """
+  Whether the category (in the given section) is deactivated, either directly
+  or because its section was deactivated.
+  """
+  def deactivated?(%Section{} = section, %Category{} = category),
+    do: not (section.active and category.active)
+
+  defp budget_eligible?(section, category) do
+    section.budget_active and category.budget_active and not deactivated?(section, category)
+  end
+
+  # Ids das categorias ativas (categoria e seção ativas) entre as informadas.
+  defp active_category_ids(%Scope{} = scope, category_ids) do
+    Category
+    |> join(:inner, [c], s in assoc(c, :section))
+    |> where([c, s], c.user_id == ^scope.user.id and c.id in ^category_ids)
+    |> where([c, s], c.active and s.active)
+    |> select([c], c.id)
+    |> Repo.all()
+    |> MapSet.new()
   end
 
   def toggle_section_budget_active(%Scope{} = scope, %Section{} = section) do
@@ -228,9 +301,17 @@ defmodule MyBudget.Budget do
       |> Repo.all()
       |> MapSet.new()
 
-    BudgetAllocation
-    |> where(monthly_budget_id: ^prev_budget.id, user_id: ^scope.user.id)
-    |> Repo.all()
+    # Categorias (ou seções) desativadas não entram no novo orçamento, mesmo
+    # que façam parte do orçamento anterior.
+    previous =
+      BudgetAllocation
+      |> where(monthly_budget_id: ^prev_budget.id, user_id: ^scope.user.id)
+      |> Repo.all()
+
+    active_ids = active_category_ids(scope, Enum.map(previous, & &1.category_id))
+
+    previous
+    |> Enum.filter(&MapSet.member?(active_ids, &1.category_id))
     |> Enum.reject(&MapSet.member?(existing_category_ids, &1.category_id))
     |> Enum.each(fn alloc ->
       %BudgetAllocation{monthly_budget_id: budget.id, category_id: alloc.category_id}
@@ -262,7 +343,8 @@ defmodule MyBudget.Budget do
           %{
             category_id: alloc.category_id,
             category: alloc.category,
-            surplus: surplus
+            surplus: surplus,
+            deactivated: deactivated?(alloc.category.section, alloc.category)
           }
         end
     end
@@ -270,8 +352,14 @@ defmodule MyBudget.Budget do
 
   def apply_rollovers(%Scope{} = scope, %MonthlyBudget{} = budget, redirects) do
     # redirects: list of %{category_id: target_id, surplus: amount}
+    # Saldos cujo destino é uma categoria desativada são descartados: ela não
+    # pode entrar no novo orçamento.
+    active_ids = active_category_ids(scope, Enum.map(redirects, & &1.category_id))
+
     Repo.transaction(fn ->
-      Enum.group_by(redirects, & &1.category_id, & &1.surplus)
+      redirects
+      |> Enum.filter(&MapSet.member?(active_ids, &1.category_id))
+      |> Enum.group_by(& &1.category_id, & &1.surplus)
       |> Enum.each(fn {category_id, surpluses} ->
         total_rollover = Enum.sum(surpluses)
 

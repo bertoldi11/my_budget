@@ -3,6 +3,12 @@
     <input type="hidden" name="return_to" value={@return_to} />
     <.input field={@form[:name]} type="text" label="Nome" />
     <.input field={@form[:section_id]} type="select" label="Sessão" options={@sections_options} />
+    <div>
+      <.input field={@form[:active]} type="checkbox" label="Ativa" />
+      <p class="-mt-1 text-xs text-base-content/60">
+        Desativada, a categoria não aparece no cadastro de movimentações nem entra em novos orçamentos.
+      </p>
+    </div>
     <%= if @show_budget_toggle do %>
       <.input field={@form[:budget_active]} type="checkbox" label="Ativo no orçamento" />
     <% end %>

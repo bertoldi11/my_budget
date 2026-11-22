@@ -7,6 +7,8 @@ defmodule MyBudget.Movements do
   alias MyBudget.Repo
 
   alias MyBudget.Movements.Section
+  alias MyBudget.Movements.Category
+  alias MyBudget.Movements.Movement
   alias MyBudget.Accounts.Scope
 
   @doc """
@@ -123,11 +125,38 @@ defmodule MyBudget.Movements do
   def delete_section(%Scope{} = scope, %Section{} = section) do
     true = section.user_id == scope.user.id
 
-    with {:ok, section = %Section{}} <-
-           Repo.delete(section) do
-      broadcast_section(scope, {:deleted, section})
-      {:ok, section}
+    if section_has_categories?(scope, section) do
+      {:error, :has_categories}
+    else
+      # A sessão só se liga a orçamentos pelas categorias; sem categorias não há
+      # alocações a apagar. A constraint cobre uma categoria criada no meio-tempo.
+      result =
+        section
+        |> Ecto.Changeset.change()
+        |> Ecto.Changeset.foreign_key_constraint(:id,
+          name: :category_section_id_fkey,
+          message: "possui categorias"
+        )
+        |> Repo.delete()
+
+      case result do
+        {:ok, section} ->
+          broadcast_section(scope, {:deleted, section})
+          {:ok, section}
+
+        {:error, _changeset} ->
+          {:error, :has_categories}
+      end
     end
+  end
+
+  @doc """
+  Returns true when the section has at least one category.
+  """
+  def section_has_categories?(%Scope{} = scope, %Section{} = section) do
+    Category
+    |> where(user_id: ^scope.user.id, section_id: ^section.id)
+    |> Repo.exists?()
   end
 
   @doc """
@@ -326,6 +355,38 @@ defmodule MyBudget.Movements do
   end
 
   @doc """
+  Returns the categories that can receive new movements: the category and its
+  section must both be active. Ordered by section name and then category name,
+  with `:section` preloaded.
+
+  ## Examples
+
+      iex> list_available_category(scope)
+      [%Category{active: true, section: %Section{active: true}}, ...]
+
+  """
+  def list_available_category(%Scope{} = scope) do
+    Category
+    |> join(:inner, [c], s in assoc(c, :section))
+    |> where([c, s], c.user_id == ^scope.user.id and c.active and s.active)
+    |> order_by([c, s], asc: s.name, asc: c.name)
+    |> preload([_c, s], section: s)
+    |> Repo.all()
+  end
+
+  @doc """
+  Returns true when the category belongs to the scope and both the category
+  and its section are active.
+  """
+  def category_available?(%Scope{} = scope, category_id) do
+    Category
+    |> join(:inner, [c], s in assoc(c, :section))
+    |> where([c, s], c.id == ^category_id and c.user_id == ^scope.user.id)
+    |> where([c, s], c.active and s.active)
+    |> Repo.exists?()
+  end
+
+  @doc """
   Gets a single category.
 
   Raises `Ecto.NoResultsError` if the Sub section does not exist.
@@ -404,11 +465,56 @@ defmodule MyBudget.Movements do
   def delete_category(%Scope{} = scope, %Category{} = category) do
     true = category.user_id == scope.user.id
 
-    with {:ok, category = %Category{}} <-
-           Repo.delete(category) do
-      broadcast_category(scope, {:deleted, category})
-      {:ok, category}
+    if category_has_movements?(scope, category) do
+      {:error, :has_movements}
+    else
+      Repo.transaction(fn ->
+        # Remove a categoria dos orçamentos em que ela estava alocada e
+        # recalcula o status (equilibrado/rascunho) desses orçamentos.
+        MyBudget.Budget.delete_category_allocations(scope, category)
+
+        category
+        |> Ecto.Changeset.change()
+        |> Ecto.Changeset.foreign_key_constraint(:id,
+          name: :movement_category_id_fkey,
+          message: "possui movimentações"
+        )
+        |> Repo.delete()
+        |> case do
+          {:ok, category} -> category
+          {:error, _changeset} -> Repo.rollback(:has_movements)
+        end
+      end)
+      |> case do
+        {:ok, category} ->
+          broadcast_category(scope, {:deleted, category})
+          {:ok, category}
+
+        error ->
+          error
+      end
     end
+  end
+
+  @doc """
+  Returns true when the category has at least one movement.
+  """
+  def category_has_movements?(%Scope{} = scope, %Category{} = category) do
+    Movement
+    |> where(user_id: ^scope.user.id, category_id: ^category.id)
+    |> Repo.exists?()
+  end
+
+  @doc """
+  Returns the set of category ids of the scope that have movements.
+  """
+  def category_ids_with_movements(%Scope{} = scope) do
+    Movement
+    |> where(user_id: ^scope.user.id)
+    |> distinct(true)
+    |> select([m], m.category_id)
+    |> Repo.all()
+    |> MapSet.new()
   end
 
   @doc """
@@ -563,22 +669,78 @@ defmodule MyBudget.Movements do
   @doc """
   Creates a movement.
 
+  When `installments` is greater than 1, the amount is split into equal
+  installments (any remaining cents go to the last one) and one movement is
+  created per installment, all inside a single transaction. Each installment
+  keeps the same category, payment method, type and counter party, is dated
+  one month after the previous one and has its number appended to the
+  description, e.g. `"TV (1/3)"`. The first installment is returned, with
+  `:installments` set to the number of installments created.
+
   ## Examples
 
       iex> create_movement(scope, %{field: value})
       {:ok, %Movement{}}
+
+      iex> create_movement(scope, %{field: value, installments: 3})
+      {:ok, %Movement{installments: 3}}
 
       iex> create_movement(scope, %{field: bad_value})
       {:error, %Ecto.Changeset{}}
 
   """
   def create_movement(%Scope{} = scope, attrs) do
-    with {:ok, movement = %Movement{}} <-
-           %Movement{}
-           |> Movement.changeset(attrs, scope)
-           |> Repo.insert() do
-      broadcast_movement(scope, {:created, movement})
-      {:ok, movement}
+    changeset =
+      %Movement{}
+      |> Movement.changeset(attrs, scope)
+      |> validate_category_available(scope)
+
+    case Ecto.Changeset.get_field(changeset, :installments) do
+      count when changeset.valid? and is_integer(count) and count > 1 ->
+        create_installments(scope, changeset, count)
+
+      _ ->
+        with {:ok, movement = %Movement{}} <- Repo.insert(changeset) do
+          broadcast_movement(scope, {:created, movement})
+          {:ok, movement}
+        end
+    end
+  end
+
+  defp create_installments(scope, changeset, count) do
+    base = Ecto.Changeset.apply_changes(changeset)
+
+    {:ok, movements} =
+      Repo.transaction(fn ->
+        base.amount
+        |> Movement.split_amount(count)
+        |> Enum.with_index(1)
+        |> Enum.map(fn {amount, number} ->
+          Repo.insert!(%{
+            base
+            | amount: amount,
+              expend_date: Date.shift(base.expend_date, month: number - 1),
+              description: "#{base.description} (#{number}/#{count})"
+          })
+        end)
+      end)
+
+    Enum.each(movements, &broadcast_movement(scope, {:created, &1}))
+
+    {:ok, hd(movements)}
+  end
+
+  # Só aceita categorias ativas (em seção ativa) quando a categoria muda. Uma
+  # movimentação antiga pode continuar numa categoria que foi desativada depois.
+  defp validate_category_available(changeset, scope) do
+    case Ecto.Changeset.get_change(changeset, :category_id) do
+      nil ->
+        changeset
+
+      category_id ->
+        if category_available?(scope, category_id),
+          do: changeset,
+          else: Ecto.Changeset.add_error(changeset, :category_id, "categoria desativada")
     end
   end
 
@@ -600,6 +762,7 @@ defmodule MyBudget.Movements do
     with {:ok, movement = %Movement{}} <-
            movement
            |> Movement.changeset(attrs, scope)
+           |> validate_category_available(scope)
            |> Repo.update() do
       broadcast_movement(scope, {:updated, movement})
       {:ok, movement}
