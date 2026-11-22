@@ -17,14 +17,26 @@
     />
     <.input field={@form[:expend_date]} type="date" label="Data" />
     <.input field={@form[:type]} type="select" label="Tipo" options={@type_options} />
-    <.input
-      field={@form[:amount_reais]}
-      type="text"
-      label="Valor (R$)"
-      placeholder="0,00"
-      autocomplete="off"
-      data-currency-mask="true"
-    />
+    <div class={[@show_installments && "grid grid-cols-[1fr_7rem] gap-3"]}>
+      <.input
+        field={@form[:amount_reais]}
+        type="text"
+        label={if(@show_installments, do: "Valor total (R$)", else: "Valor (R$)")}
+        placeholder="0,00"
+        autocomplete="off"
+        data-currency-mask="true"
+      />
+      <.input
+        :if={@show_installments}
+        field={@form[:installments]}
+        type="number"
+        label="Parcelas"
+        min="1"
+        max="120"
+        step="1"
+        inputmode="numeric"
+      />
+    </div>
     <.input field={@form[:description]} type="text" label="Descrição" />
     <.input field={@form[:counter_party]} type="text" label="Pago a/Recebido de" />
     <footer class="mt-6 flex items-center gap-3">

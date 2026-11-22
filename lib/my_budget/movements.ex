@@ -563,23 +563,62 @@ defmodule MyBudget.Movements do
   @doc """
   Creates a movement.
 
+  When `installments` is greater than 1, the amount is split into equal
+  installments (any remaining cents go to the last one) and one movement is
+  created per installment, all inside a single transaction. Each installment
+  keeps the same category, payment method, type and counter party, is dated
+  one month after the previous one and has its number appended to the
+  description, e.g. `"TV (1/3)"`. The first installment is returned, with
+  `:installments` set to the number of installments created.
+
   ## Examples
 
       iex> create_movement(scope, %{field: value})
       {:ok, %Movement{}}
+
+      iex> create_movement(scope, %{field: value, installments: 3})
+      {:ok, %Movement{installments: 3}}
 
       iex> create_movement(scope, %{field: bad_value})
       {:error, %Ecto.Changeset{}}
 
   """
   def create_movement(%Scope{} = scope, attrs) do
-    with {:ok, movement = %Movement{}} <-
-           %Movement{}
-           |> Movement.changeset(attrs, scope)
-           |> Repo.insert() do
-      broadcast_movement(scope, {:created, movement})
-      {:ok, movement}
+    changeset = Movement.changeset(%Movement{}, attrs, scope)
+
+    case Ecto.Changeset.get_field(changeset, :installments) do
+      count when changeset.valid? and is_integer(count) and count > 1 ->
+        create_installments(scope, changeset, count)
+
+      _ ->
+        with {:ok, movement = %Movement{}} <- Repo.insert(changeset) do
+          broadcast_movement(scope, {:created, movement})
+          {:ok, movement}
+        end
     end
+  end
+
+  defp create_installments(scope, changeset, count) do
+    base = Ecto.Changeset.apply_changes(changeset)
+
+    {:ok, movements} =
+      Repo.transaction(fn ->
+        base.amount
+        |> Movement.split_amount(count)
+        |> Enum.with_index(1)
+        |> Enum.map(fn {amount, number} ->
+          Repo.insert!(%{
+            base
+            | amount: amount,
+              expend_date: Date.shift(base.expend_date, month: number - 1),
+              description: "#{base.description} (#{number}/#{count})"
+          })
+        end)
+      end)
+
+    Enum.each(movements, &broadcast_movement(scope, {:created, &1}))
+
+    {:ok, hd(movements)}
   end
 
   @doc """

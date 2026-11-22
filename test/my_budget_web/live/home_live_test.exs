@@ -85,6 +85,42 @@ defmodule MyBudgetWeb.HomeLiveTest do
       assert render(view) =~ "Transporte"
       assert render(view) =~ "Combustível"
     end
+
+    test "creates installments from the modal", %{conn: conn, scope: scope} do
+      payment_method = payment_method_fixture(scope)
+      section = section_fixture(scope, %{name: "Eletrônicos"})
+      category = category_fixture(scope, %{name: "TV", section_id: section.id})
+
+      {:ok, view, _html} = live(conn, ~p"/?m=11&y=2026")
+
+      view |> element("#new-movement-btn") |> render_click()
+
+      view
+      |> form("#modal-movement-form", %{
+        "movement" => %{
+          "category_id" => category.id,
+          "payment_method_id" => payment_method.id,
+          "expend_date" => "2026-11-14",
+          "type" => "debit",
+          "amount_reais" => "200,00",
+          "installments" => "2",
+          "description" => "Televisão",
+          "counter_party" => "Loja"
+        }
+      })
+      |> render_submit()
+
+      refute has_element?(view, "#modal-movement-form")
+      # Só a primeira parcela cai em novembro; a segunda fica para dezembro.
+      assert render(view) =~ "100,00"
+      assert render(view) =~ "Movimentação cadastrada em 2 parcelas!"
+
+      descriptions =
+        scope |> MyBudget.Movements.list_movement() |> Enum.map(& &1.description)
+
+      assert "Televisão (1/2)" in descriptions
+      assert "Televisão (2/2)" in descriptions
+    end
   end
 
   describe "category accordion" do

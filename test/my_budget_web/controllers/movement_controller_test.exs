@@ -3,6 +3,8 @@ defmodule MyBudgetWeb.MovementControllerTest do
 
   import MyBudget.MovementsFixtures
 
+  alias MyBudget.Movements
+
   @invalid_attrs %{amount: nil, description: nil, counter_party: nil, type: nil}
 
   setup :register_and_log_in_user
@@ -111,6 +113,29 @@ defmodule MyBudgetWeb.MovementControllerTest do
         post(conn, ~p"/movement", movement: create_attrs(context), return_to: "payment_method")
 
       assert redirected_to(conn) == ~p"/payment_method/#{payment_method}"
+    end
+
+    test "creates one movement per installment", %{conn: conn, scope: scope} = context do
+      attrs =
+        context
+        |> create_attrs()
+        |> Map.drop([:amount])
+        |> Map.merge(%{amount_reais: "200,00", installments: "2"})
+
+      conn = post(conn, ~p"/movement", movement: attrs)
+      assert redirected_to(conn) == ~p"/movement"
+      assert Phoenix.Flash.get(conn.assigns.flash, :info) =~ "2 parcelas"
+
+      assert scope |> Movements.list_movement() |> Enum.map(& &1.amount) == [10_000, 10_000]
+    end
+
+    test "shows the installments field only when creating", %{conn: conn} do
+      response = conn |> get(~p"/movement/new") |> html_response(200)
+
+      assert element?(
+               response,
+               ~s(#movement-form input[name="movement[installments]"][value="1"])
+             )
     end
 
     test "renders errors when data is invalid", %{conn: conn} do

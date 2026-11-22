@@ -32,7 +32,7 @@ defmodule MyBudgetWeb.MovementController do
 
     with {:ok, movement} <- Movements.create_movement(scope, movement_params) do
       conn
-      |> put_flash(:info, "Movimentação cadastrada com sucesso!")
+      |> put_flash(:info, created_message(movement))
       |> redirect(to: return_path(conn.assigns.return_to, movement, params))
     else
       error -> {conn, error}
@@ -196,4 +196,9 @@ defmodule MyBudgetWeb.MovementController do
   end
 
   defp reference(_params), do: nil
+
+  defp created_message(%{installments: count}) when is_integer(count) and count > 1,
+    do: "Movimentação cadastrada em #{count} parcelas!"
+
+  defp created_message(_movement), do: "Movimentação cadastrada com sucesso!"
 end

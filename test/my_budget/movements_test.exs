@@ -442,5 +442,96 @@ defmodule MyBudget.MovementsTest do
       movement = movement_fixture(scope)
       assert %Ecto.Changeset{} = Movements.change_movement(scope, movement)
     end
+
+    test "create_movement/2 splits the amount into installments" do
+      scope = user_scope_fixture()
+      category = category_fixture(scope)
+      payment_method = payment_method_fixture(scope)
+
+      attrs = %{
+        type: "debit",
+        description: "TV",
+        amount_reais: "200,00",
+        counter_party: "Loja",
+        expend_date: ~D[2026-11-14],
+        installments: 2,
+        category_id: category.id,
+        payment_method_id: payment_method.id
+      }
+
+      assert {:ok, %Movement{installments: 2} = first} = Movements.create_movement(scope, attrs)
+      assert first.description == "TV (1/2)"
+
+      movements = scope |> Movements.list_movement() |> Enum.sort_by(& &1.expend_date, Date)
+
+      assert Enum.map(movements, &{&1.amount, &1.expend_date, &1.description}) == [
+               {10_000, ~D[2026-11-14], "TV (1/2)"},
+               {10_000, ~D[2026-12-14], "TV (2/2)"}
+             ]
+
+      for movement <- movements do
+        assert movement.category_id == category.id
+        assert movement.payment_method_id == payment_method.id
+        assert movement.type == "debit"
+        assert movement.counter_party == "Loja"
+      end
+    end
+
+    test "create_movement/2 adds the remaining cents to the last installment" do
+      scope = user_scope_fixture()
+
+      attrs = %{
+        type: "debit",
+        description: "Curso",
+        amount_reais: "100,00",
+        counter_party: "Escola",
+        expend_date: ~D[2026-01-31],
+        installments: "3",
+        category_id: category_fixture(scope).id,
+        payment_method_id: payment_method_fixture(scope).id
+      }
+
+      assert {:ok, _movement} = Movements.create_movement(scope, attrs)
+
+      movements = scope |> Movements.list_movement() |> Enum.sort_by(& &1.expend_date, Date)
+
+      assert Enum.map(movements, &{&1.amount, &1.expend_date}) == [
+               {3_333, ~D[2026-01-31]},
+               {3_333, ~D[2026-02-28]},
+               {3_334, ~D[2026-03-31]}
+             ]
+    end
+
+    test "create_movement/2 rejects an invalid number of installments" do
+      scope = user_scope_fixture()
+
+      attrs = %{
+        type: "debit",
+        description: "Curso",
+        amount_reais: "0,01",
+        counter_party: "Escola",
+        expend_date: ~D[2026-01-31],
+        category_id: category_fixture(scope).id,
+        payment_method_id: payment_method_fixture(scope).id
+      }
+
+      assert {:error, changeset} =
+               Movements.create_movement(scope, Map.put(attrs, :installments, 0))
+
+      assert %{installments: ["deve estar entre 1 e 120"]} = errors_on(changeset)
+
+      assert {:error, changeset} =
+               Movements.create_movement(scope, Map.put(attrs, :installments, 2))
+
+      assert %{installments: [_]} = errors_on(changeset)
+
+      assert Movements.list_movement(scope) == []
+    end
+
+    test "split_amount/2 keeps the total and puts the remainder on the last installment" do
+      assert Movement.split_amount(20_000, 2) == [10_000, 10_000]
+      assert Movement.split_amount(10_000, 3) == [3_333, 3_333, 3_334]
+      assert Movement.split_amount(1_000, 1) == [1_000]
+    end
   end
 end

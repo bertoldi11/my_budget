@@ -16,6 +16,7 @@ defmodule MyBudgetWeb.MovementHTML do
   attr :return_to, :string, default: "index"
   attr :return_params, :map, default: %{}
   attr :cancel_path, :string, required: true
+  attr :show_installments, :boolean, default: false
 
   def movement_form(assigns)
 

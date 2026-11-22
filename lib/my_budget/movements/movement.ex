@@ -17,6 +17,11 @@ defmodule MyBudget.Movements.Movement do
     # centavos em `:amount` pela changeset.
     field :amount_reais, :string, virtual: true
 
+    # Quantidade de parcelas informada no cadastro. Quando maior que 1, o valor
+    # é dividido igualmente e é gerada uma movimentação por parcela (ver
+    # `MyBudget.Movements.create_movement/2`).
+    field :installments, :integer, virtual: true, default: 1
+
     belongs_to :category, Category
     belongs_to :payment_method, PaymentMethod
 
@@ -25,13 +30,16 @@ defmodule MyBudget.Movements.Movement do
 
   @required_fields ~w(description counter_party type category_id payment_method_id expend_date)a
 
+  @max_installments 120
+
   @doc false
   def changeset(movement, attrs, user_scope) do
     movement
-    |> cast(attrs, [:amount, :amount_reais | @required_fields])
+    |> cast(attrs, [:amount, :amount_reais, :installments | @required_fields])
     |> put_amount_from_reais()
     |> validate_required(@required_fields)
     |> validate_amount()
+    |> validate_installments()
     |> put_change(:user_id, user_scope.user.id)
   end
 
@@ -74,6 +82,45 @@ defmodule MyBudget.Movements.Movement do
 
       true ->
         changeset
+    end
+  end
+
+  @doc """
+  Splits `amount` (in cents) into `count` equal installments. When the division
+  is not exact, the remaining cents are added to the last installment, so the
+  sum of the installments is always equal to `amount`.
+
+  ## Examples
+
+      iex> split_amount(10_000, 3)
+      [3_333, 3_333, 3_334]
+
+  """
+  def split_amount(amount, count) when is_integer(amount) and is_integer(count) and count > 0 do
+    base = div(amount, count)
+    List.duplicate(base, count - 1) ++ [amount - base * (count - 1)]
+  end
+
+  # Parcelas: entre 1 e @max_installments, e cada parcela precisa ter ao menos
+  # um centavo.
+  defp validate_installments(changeset) do
+    changeset =
+      changeset
+      |> validate_required([:installments], message: "informe o número de parcelas")
+      |> validate_number(:installments,
+        greater_than_or_equal_to: 1,
+        less_than_or_equal_to: @max_installments,
+        message: "deve estar entre 1 e #{@max_installments}"
+      )
+
+    installments = get_field(changeset, :installments)
+    amount = get_field(changeset, :amount)
+
+    if is_integer(installments) and installments > 1 and is_integer(amount) and
+         abs(amount) < installments do
+      add_error(changeset, :installments, "valor insuficiente para essa quantidade de parcelas")
+    else
+      changeset
     end
   end
 
