@@ -93,6 +93,34 @@ defmodule MyBudgetWeb.CategoryControllerTest do
     end
   end
 
+  describe "index separation" do
+    test "separates active and inactive categories", %{
+      conn: conn,
+      scope: scope,
+      section: section
+    } do
+      active = category_fixture(scope, %{name: "Aluguel", section_id: section.id})
+      inactive = category_fixture(scope, %{name: "Gás", section_id: section.id, active: false})
+
+      inactive_section = section_fixture(scope, %{name: "Antiga", active: false})
+
+      in_inactive_section =
+        category_fixture(scope, %{name: "Velha", section_id: inactive_section.id})
+
+      response = conn |> get(~p"/category") |> html_response(200)
+
+      assert element?(response, "#active-categories #category-#{active.id}")
+      refute element?(response, "#inactive-categories #category-#{active.id}")
+
+      for category <- [inactive, in_inactive_section] do
+        assert element?(response, "#inactive-categories #category-#{category.id}")
+        refute element?(response, "#active-categories #category-#{category.id}")
+      end
+
+      assert element?(response, "#inactive-categories #section-inactive-#{inactive_section.id}")
+    end
+  end
+
   describe "delete category" do
     setup [:create_category]
 
@@ -104,6 +132,35 @@ defmodule MyBudgetWeb.CategoryControllerTest do
         get(conn, ~p"/category/#{category}")
       end
     end
+
+    test "does not delete a category with movements", %{
+      conn: conn,
+      scope: scope,
+      category: category
+    } do
+      movement_fixture(scope, %{category_id: category.id})
+
+      response = conn |> get(~p"/category") |> html_response(200)
+      assert element?(response, "#delete-category-disabled-#{category.id}")
+      refute element?(response, "#delete-category-#{category.id}")
+
+      conn = delete(conn, ~p"/category/#{category}")
+      assert redirected_to(conn) == ~p"/category"
+      assert Phoenix.Flash.get(conn.assigns.flash, :error) =~ "possui movimentações"
+      assert MyBudget.Movements.get_category!(scope, category.id)
+    end
+
+    test "shows the delete link for a category without movements", %{
+      conn: conn,
+      category: category
+    } do
+      response = conn |> get(~p"/category") |> html_response(200)
+      assert element?(response, "#delete-category-#{category.id}")
+    end
+  end
+
+  defp element?(html, selector) do
+    html |> LazyHTML.from_document() |> LazyHTML.query(selector) |> Enum.count() > 0
   end
 
   defp create_category(%{scope: scope, section: section}) do

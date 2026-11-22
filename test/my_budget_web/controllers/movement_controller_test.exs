@@ -129,6 +129,27 @@ defmodule MyBudgetWeb.MovementControllerTest do
       assert scope |> Movements.list_movement() |> Enum.map(& &1.amount) == [10_000, 10_000]
     end
 
+    test "does not offer deactivated categories or categories of deactivated sections",
+         %{conn: conn, scope: scope, category: category} do
+      inactive =
+        category_fixture(scope, %{name: "Gás", section_id: category.section_id, active: false})
+
+      inactive_section = section_fixture(scope, %{name: "Antiga", active: false})
+
+      in_inactive_section =
+        category_fixture(scope, %{name: "Velha", section_id: inactive_section.id})
+
+      response = conn |> get(~p"/movement/new") |> html_response(200)
+
+      assert element?(response, ~s(select#movement_category_id option[value="#{category.id}"]))
+      refute element?(response, ~s(select#movement_category_id option[value="#{inactive.id}"]))
+
+      refute element?(
+               response,
+               ~s(select#movement_category_id option[value="#{in_inactive_section.id}"])
+             )
+    end
+
     test "shows the installments field only when creating", %{conn: conn} do
       response = conn |> get(~p"/movement/new") |> html_response(200)
 
@@ -186,6 +207,20 @@ defmodule MyBudgetWeb.MovementControllerTest do
     test "renders form for editing chosen movement", %{conn: conn, movement: movement} do
       conn = get(conn, ~p"/movement/#{movement}/edit")
       assert html_response(conn, 200) =~ "Editar Movimentação"
+    end
+
+    test "keeps showing the movement's category after it is deactivated",
+         %{conn: conn, scope: scope, movement: movement, category: category} do
+      {:ok, _} = Movements.update_category(scope, category, %{active: false})
+
+      response = conn |> get(~p"/movement/#{movement}/edit") |> html_response(200)
+
+      assert element?(
+               response,
+               ~s(select#movement_category_id option[value="#{category.id}"][selected])
+             )
+
+      assert response =~ "Aluguel (desativada)"
     end
   end
 

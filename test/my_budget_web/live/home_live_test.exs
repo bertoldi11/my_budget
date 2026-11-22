@@ -48,6 +48,21 @@ defmodule MyBudgetWeb.HomeLiveTest do
       assert has_element?(view, "#close-modal-btn")
     end
 
+    test "modal does not offer deactivated categories", %{
+      conn: conn,
+      scope: scope,
+      category: category
+    } do
+      inactive =
+        category_fixture(scope, %{name: "Gás", section_id: category.section_id, active: false})
+
+      {:ok, view, _html} = live(conn, ~p"/")
+      view |> element("#new-movement-btn") |> render_click()
+
+      assert has_element?(view, ~s(#modal-movement-form option[value="#{category.id}"]))
+      refute has_element?(view, ~s(#modal-movement-form option[value="#{inactive.id}"]))
+    end
+
     test "closes modal when cancel is clicked", %{conn: conn} do
       {:ok, view, _html} = live(conn, ~p"/")
 

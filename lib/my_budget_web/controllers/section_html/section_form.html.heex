@@ -2,6 +2,12 @@
   <.form for={@form} id="section-form" action={@action} class="space-y-4">
     <input type="hidden" name="return_to" value={@return_to} />
     <.input field={@form[:name]} type="text" label="Nome" />
+    <div>
+      <.input field={@form[:active]} type="checkbox" label="Ativa" />
+      <p class="-mt-1 text-xs text-base-content/60">
+        Desativada, a sessão e suas categorias não aparecem no cadastro de movimentações nem entram em novos orçamentos.
+      </p>
+    </div>
     <%= if @show_budget_toggle do %>
       <.input field={@form[:budget_active]} type="checkbox" label="Ativo no orçamento" />
     <% end %>

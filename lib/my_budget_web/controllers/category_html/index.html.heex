@@ -11,7 +11,7 @@
 
   <%!-- Estado vazio --%>
   <div
-    :if={@sections == []}
+    :if={@active_groups == [] and @inactive_groups == []}
     class="rounded-box border border-dashed border-base-300 py-12 text-center"
   >
     <.icon name="hero-tag" class="mx-auto size-10 text-base-content/40" />
@@ -24,46 +24,22 @@
     </.button>
   </div>
 
-  <%!-- Seções --%>
-  <div class="space-y-4">
-    <%= for section <- @sections do %>
-      <section class="rounded-box border border-base-300 bg-base-100 overflow-hidden">
-        <header class="flex items-center justify-between gap-3 bg-base-200 px-4 py-3">
-          <div class="flex items-center gap-2">
-            <h2 class="font-semibold">{section.section.name}</h2>
-            <span class="badge badge-sm badge-ghost">{length(section.categories)}</span>
-          </div>
-        </header>
+  <div :if={@active_groups != [] or @inactive_groups != []} class="space-y-8">
+    <.category_groups
+      id="active-categories"
+      title="Ativas"
+      groups={@active_groups}
+      category_ids_with_movements={@category_ids_with_movements}
+      empty_message="Nenhuma categoria ativa."
+    />
 
-        <ul class="divide-y divide-base-200">
-          <li
-            :for={category <- section.categories}
-            id={"category-#{category.id}"}
-            class="group flex items-center justify-between gap-3 px-4 py-3 hover:bg-base-200/50"
-          >
-            <.link href={~p"/category/#{category}"} class="flex-1 font-medium hover:underline">
-              {category.name}
-            </.link>
-
-            <div class="flex items-center gap-3 text-sm">
-              <.link
-                href={~p"/category/#{category}/edit"}
-                class="inline-flex items-center gap-1 text-base-content/70 hover:text-primary"
-              >
-                <.icon name="hero-pencil-square" class="size-4" /> Editar
-              </.link>
-              <.link
-                href={~p"/category/#{category}"}
-                method="delete"
-                data-confirm="Tem certeza que deseja apagar essa categoria?"
-                class="inline-flex items-center gap-1 text-base-content/70 hover:text-error"
-              >
-                <.icon name="hero-trash" class="size-4" /> Apagar
-              </.link>
-            </div>
-          </li>
-        </ul>
-      </section>
-    <% end %>
+    <.category_groups
+      :if={@inactive_groups != []}
+      id="inactive-categories"
+      title="Inativas"
+      groups={@inactive_groups}
+      category_ids_with_movements={@category_ids_with_movements}
+      muted
+    />
   </div>
 </Layouts.app>

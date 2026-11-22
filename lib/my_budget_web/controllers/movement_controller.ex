@@ -5,6 +5,7 @@ defmodule MyBudgetWeb.MovementController do
 
   alias MyBudget.Movements
   alias MyBudget.Movements.Movement
+  alias MyBudgetWeb.MovementOptions
 
   def index(conn, _params) do
     movement_collection = Movements.list_movement(conn.assigns.current_scope)
@@ -63,7 +64,7 @@ defmodule MyBudgetWeb.MovementController do
       |> assign(:page_title, "Editar Movimentação")
       |> assign(:movement, movement)
       |> assign(:return_to, return_to)
-      |> assign_form_options()
+      |> assign_form_options(movement.category_id)
 
     with {:ok, updated_movement} <- Movements.update_movement(scope, movement, movement_params) do
       conn
@@ -89,7 +90,7 @@ defmodule MyBudgetWeb.MovementController do
 
   defp render_edit(conn, movement, changeset, return_to) do
     conn
-    |> assign_form_options()
+    |> assign_form_options(movement.category_id)
     |> render(:edit,
       page_title: "Editar Movimentação",
       movement: movement,
@@ -113,23 +114,13 @@ defmodule MyBudgetWeb.MovementController do
     |> assign_form_options()
   end
 
-  defp assign_form_options(conn) do
+  defp assign_form_options(conn, current_category_id \\ nil) do
     scope = conn.assigns.current_scope
 
-    categories_options =
-      scope
-      |> Movements.list_category()
-      |> Enum.map(&{"#{&1.section.name} / #{&1.name}", &1.id})
-
-    payment_method_options =
-      scope
-      |> Movements.list_payment_method()
-      |> Enum.map(&{&1.name, &1.id})
-
     conn
-    |> assign(:categories_options, categories_options)
-    |> assign(:payment_method_options, payment_method_options)
-    |> assign(:type_options, [{"Saída", "debit"}, {"Entrada", "credit"}])
+    |> assign(:categories_options, MovementOptions.category_options(scope, current_category_id))
+    |> assign(:payment_method_options, MovementOptions.payment_method_options(scope))
+    |> assign(:type_options, MovementOptions.type_options())
   end
 
   # O método de pagamento vem pré-selecionado quando o formulário é aberto da

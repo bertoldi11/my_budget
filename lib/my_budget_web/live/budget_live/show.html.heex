@@ -34,7 +34,8 @@
         <div>
           <p class="font-semibold text-sm">Saldo do mês anterior disponível</p>
           <p class="text-sm text-base-content/70 mt-1">
-            Algumas categorias do mês anterior estão inativas. Selecione uma categoria ativa de destino para cada saldo.
+            Escolha para onde vai o saldo de cada categoria. Saldos de categorias desativadas
+            só são aproveitados se você escolher uma categoria de destino.
           </p>
         </div>
       </div>
@@ -43,25 +44,35 @@
           <div id={"rollover-#{rollover.category_id}"} class="flex items-center gap-3 text-sm">
             <span class="font-medium min-w-[12rem]">
               {rollover.category.name}
+              <span :if={rollover.deactivated} class="badge badge-xs badge-ghost ml-1">
+                desativada
+              </span>
               <span class="text-success ml-1">R$ {format_reais(rollover.surplus)}</span>
             </span>
             <span class="text-base-content/50">→</span>
-            <select
-              id={"rollover-select-#{rollover.category_id}"}
-              class="select select-bordered select-sm flex-1"
+            <form
+              id={"rollover-form-#{rollover.category_id}"}
               phx-change="rollover_redirect"
-              name="to_category"
-              data-from={rollover.category_id}
+              class="flex-1"
             >
-              <option value="">Selecione...</option>
-              <%= for section <- @sections do %>
-                <optgroup label={section.name}>
-                  <%= for cat <- section.categories do %>
-                    <option value={cat.id}>{cat.name}</option>
-                  <% end %>
-                </optgroup>
-              <% end %>
-            </select>
+              <input type="hidden" name="from_category" value={rollover.category_id} />
+              <select
+                id={"rollover-select-#{rollover.category_id}"}
+                class="select select-bordered select-sm w-full"
+                name="to_category"
+              >
+                <option value="">
+                  {if(rollover.deactivated, do: "Selecione...", else: "Manter na mesma categoria")}
+                </option>
+                <%= for section <- @rollover_targets do %>
+                  <optgroup label={section.name}>
+                    <%= for cat <- section.categories do %>
+                      <option value={cat.id}>{cat.name}</option>
+                    <% end %>
+                  </optgroup>
+                <% end %>
+              </select>
+            </form>
           </div>
         <% end %>
       </div>
@@ -227,6 +238,13 @@
           >
             <div class="text-sm flex items-center gap-1">
               {category.name}
+              <span
+                :if={Budget.deactivated?(section, category)}
+                class="badge badge-xs badge-ghost"
+                title="Desativada: não entra nos próximos orçamentos"
+              >
+                desativada
+              </span>
               <%= if allocation && allocation.rollover_amount > 0 do %>
                 <span
                   class="badge badge-xs badge-info"

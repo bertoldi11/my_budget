@@ -11,7 +11,7 @@
 
   <%!-- Estado vazio --%>
   <div
-    :if={@section_collection == []}
+    :if={@active_sections == [] and @inactive_sections == []}
     class="rounded-box border border-dashed border-base-300 py-12 text-center"
   >
     <.icon name="hero-folder" class="mx-auto size-10 text-base-content/40" />
@@ -24,38 +24,22 @@
     </.button>
   </div>
 
-  <%!-- Lista --%>
-  <section
-    :if={@section_collection != []}
-    class="rounded-box border border-base-300 bg-base-100 overflow-hidden"
-  >
-    <ul class="divide-y divide-base-200">
-      <li
-        :for={section <- @section_collection}
-        id={"section-#{section.id}"}
-        class="group flex items-center justify-between gap-3 px-4 py-3 hover:bg-base-200/50"
-      >
-        <.link href={~p"/section/#{section}"} class="flex-1 font-medium hover:underline">
-          {section.name}
-        </.link>
+  <div :if={@active_sections != [] or @inactive_sections != []} class="space-y-8">
+    <.section_group
+      id="active-sections"
+      title="Ativas"
+      sections={@active_sections}
+      section_ids_with_categories={@section_ids_with_categories}
+      empty_message="Nenhuma sessão ativa."
+    />
 
-        <div class="flex items-center gap-3 text-sm">
-          <.link
-            href={~p"/section/#{section}/edit"}
-            class="inline-flex items-center gap-1 text-base-content/70 hover:text-primary"
-          >
-            <.icon name="hero-pencil-square" class="size-4" /> Editar
-          </.link>
-          <.link
-            href={~p"/section/#{section}"}
-            method="delete"
-            data-confirm="Tem certeza que deseja excluir essa sessão?"
-            class="inline-flex items-center gap-1 text-base-content/70 hover:text-error"
-          >
-            <.icon name="hero-trash" class="size-4" /> Apagar
-          </.link>
-        </div>
-      </li>
-    </ul>
-  </section>
+    <.section_group
+      :if={@inactive_sections != []}
+      id="inactive-sections"
+      title="Inativas"
+      sections={@inactive_sections}
+      section_ids_with_categories={@section_ids_with_categories}
+      muted
+    />
+  </div>
 </Layouts.app>

@@ -9,9 +9,23 @@ defmodule MyBudgetWeb.SectionController do
   alias MyBudget.Movements.Section
 
   def index(conn, _params) do
-    section_collection = Movements.list_section(conn.assigns.current_scope)
+    scope = conn.assigns.current_scope
 
-    render(conn, :index, page_title: "Sessões", section_collection: section_collection)
+    {active_sections, inactive_sections} =
+      scope
+      |> Movements.list_section()
+      |> Enum.sort_by(&String.downcase(&1.name))
+      |> Enum.split_with(& &1.active)
+
+    section_ids_with_categories =
+      scope |> Movements.list_category() |> MapSet.new(& &1.section_id)
+
+    render(conn, :index,
+      page_title: "Sessões",
+      active_sections: active_sections,
+      inactive_sections: inactive_sections,
+      section_ids_with_categories: section_ids_with_categories
+    )
   end
 
   def new(conn, _params) do
@@ -34,7 +48,7 @@ defmodule MyBudgetWeb.SectionController do
       |> assign(:show_budget_toggle, Scope.budget_enabled?(scope))
 
     with {:ok, section} <- Movements.create_section(scope, section_params) do
-      if Scope.budget_enabled?(scope) and section.budget_active do
+      if Scope.budget_enabled?(scope) and section.budget_active and section.active do
         redirect(conn, to: ~p"/section/#{section}/budget_confirm")
       else
         conn
@@ -90,12 +104,19 @@ defmodule MyBudgetWeb.SectionController do
     scope = conn.assigns.current_scope
     section = Movements.get_section!(scope, id)
 
-    with {:ok, _section} <- Movements.delete_section(scope, section) do
-      conn
-      |> put_flash(:info, "Sessão apagada com sucesso!")
-      |> redirect(to: ~p"/section")
-    else
-      error -> {conn, error}
+    case Movements.delete_section(scope, section) do
+      {:ok, _section} ->
+        conn
+        |> put_flash(:info, "Sessão apagada com sucesso!")
+        |> redirect(to: ~p"/section")
+
+      {:error, :has_categories} ->
+        conn
+        |> put_flash(
+          :error,
+          "A sessão possui categorias e não pode ser apagada. Desative-a ou apague as categorias antes."
+        )
+        |> redirect(to: ~p"/section")
     end
   end
 
@@ -112,8 +133,10 @@ defmodule MyBudgetWeb.SectionController do
 
     {:ok, budget} = Budget.get_or_create_monthly_budget(scope, today.year, today.month)
 
+    # Uma sessão desativada não entra no orçamento; das ativas, só as
+    # categorias ativas.
     section.categories
-    |> Enum.filter(& &1.budget_active)
+    |> Enum.filter(&(section.active and &1.active and &1.budget_active))
     |> Enum.each(fn category ->
       Budget.upsert_allocation(scope, budget, category.id, 0)
     end)

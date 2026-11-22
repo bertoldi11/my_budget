@@ -4,6 +4,7 @@ defmodule MyBudgetWeb.HomeLive do
   alias MyBudget.Movements
   alias MyBudget.Movements.Movement
   alias MyBudgetWeb.Format
+  alias MyBudgetWeb.MovementOptions
 
   def mount(_params, _session, socket) do
     {:ok,
@@ -110,20 +111,10 @@ defmodule MyBudgetWeb.HomeLive do
   defp assign_form_options(socket) do
     scope = socket.assigns.current_scope
 
-    categories_options =
-      scope
-      |> Movements.list_category()
-      |> Enum.map(&{"#{&1.section.name} / #{&1.name}", &1.id})
-
-    payment_method_options =
-      scope
-      |> Movements.list_payment_method()
-      |> Enum.map(&{&1.name, &1.id})
-
     socket
-    |> assign(:categories_options, categories_options)
-    |> assign(:payment_method_options, payment_method_options)
-    |> assign(:type_options, [{"Saída", "debit"}, {"Entrada", "credit"}])
+    |> assign(:categories_options, MovementOptions.category_options(scope))
+    |> assign(:payment_method_options, MovementOptions.payment_method_options(scope))
+    |> assign(:type_options, MovementOptions.type_options())
   end
 
   defp list_movements(scope, month, year) do
