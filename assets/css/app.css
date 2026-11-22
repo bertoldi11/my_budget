@@ -103,3 +103,40 @@
 [data-phx-session], [data-phx-teleported-src] { display: contents }
 
 /* This file is for your main application CSS */
+
+/* Cores categóricas dos gráficos (validadas contra as superfícies base-100 dos
+   temas claro e escuro). A ordem é fixa: cada slot é sempre a mesma cor. */
+:root {
+  --chart-series-1: #2a78d6;
+  --chart-series-2: #eb6834;
+  --chart-series-3: #1baf7a;
+  --chart-series-4: #eda100;
+  --chart-series-5: #e87ba4;
+  --chart-series-6: #008300;
+  --chart-series-7: #6250d6;
+  --chart-series-other: #8c8c87;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --chart-series-1: #3987e5;
+    --chart-series-2: #d95926;
+    --chart-series-3: #199e70;
+    --chart-series-4: #c98500;
+    --chart-series-5: #d55181;
+    --chart-series-6: #0ca30c;
+    --chart-series-7: #9085e9;
+    --chart-series-other: #85857f;
+  }
+}
+
+:root[data-theme="dark"] {
+  --chart-series-1: #3987e5;
+  --chart-series-2: #d95926;
+  --chart-series-3: #199e70;
+  --chart-series-4: #c98500;
+  --chart-series-5: #d55181;
+  --chart-series-6: #0ca30c;
+  --chart-series-7: #9085e9;
+  --chart-series-other: #85857f;
+}

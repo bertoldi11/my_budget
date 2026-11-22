@@ -47,6 +47,52 @@
     </button>
   </div>
 
+  <%!-- Gráfico: saídas do mês por sessão --%>
+  <section
+    :if={@chart_slices != []}
+    id="section-chart-card"
+    class="rounded-box border border-base-300 bg-base-100 p-5"
+  >
+    <header class="mb-4">
+      <h2 class="font-semibold">Saídas por sessão</h2>
+      <p class="text-sm text-base-content/60">
+        Para onde foi o dinheiro em {@current_date.month_string}
+      </p>
+    </header>
+
+    <div class="grid items-center gap-6 sm:grid-cols-[13rem_1fr]">
+      <div
+        id="section-pie-chart"
+        phx-hook="SectionPieChart"
+        phx-update="ignore"
+        data-slices={Jason.encode!(@chart_slices)}
+        class="relative mx-auto aspect-square w-full max-w-52"
+      >
+        <canvas role="img" aria-label="Gráfico de pizza das saídas do mês por sessão">
+        </canvas>
+      </div>
+
+      <ul id="section-chart-legend" class="space-y-1">
+        <li
+          :for={slice <- @chart_slices}
+          id={"chart-slice-#{slice.slot}"}
+          class="flex items-center gap-3 rounded-lg px-2 py-1.5 text-sm transition-colors hover:bg-base-200/60"
+        >
+          <span
+            class="size-3 shrink-0 rounded-sm"
+            style={"background-color: var(--chart-series-#{slice.slot})"}
+          >
+          </span>
+          <span class="min-w-0 flex-1 truncate">{slice.label}</span>
+          <span class="font-medium tabular-nums">{slice.formatted}</span>
+          <span class="w-14 text-right tabular-nums text-base-content/60">
+            {format_percent(slice.percent)}
+          </span>
+        </li>
+      </ul>
+    </div>
+  </section>
+
   <%!-- Estado vazio --%>
   <div
     :if={@sections == []}

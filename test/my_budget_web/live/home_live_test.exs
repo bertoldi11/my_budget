@@ -29,6 +29,21 @@ defmodule MyBudgetWeb.HomeLiveTest do
       assert render(view) =~ "/?m=11&amp;y=2026"
     end
 
+    test "shows the pie chart of expenses by section", %{conn: conn} do
+      {:ok, view, _html} = live(conn, ~p"/?m=10&y=2026")
+
+      assert has_element?(view, "#section-chart-card")
+      assert has_element?(view, "#section-pie-chart[phx-hook=SectionPieChart]")
+      assert has_element?(view, "#section-chart-legend #chart-slice-1", "Moradia")
+      assert has_element?(view, "#chart-slice-1", "100,0%")
+    end
+
+    test "hides the chart when the month has no expenses", %{conn: conn} do
+      {:ok, view, _html} = live(conn, ~p"/?m=1&y=2027")
+
+      refute has_element?(view, "#section-chart-card")
+    end
+
     test "does not list movements from other months", %{conn: conn} do
       {:ok, _view, html} = live(conn, ~p"/?m=1&y=2027")
 
@@ -252,5 +267,40 @@ defmodule MyBudgetWeb.HomeLiveTest do
   test "redirects if user is not logged in", %{conn: conn} do
     assert {:error, {:redirect, %{to: path}}} = live(conn, ~p"/")
     assert path == ~p"/users/log-in"
+  end
+
+  describe "build_chart_slices/1" do
+    alias MyBudgetWeb.HomeLive
+
+    defp movement(section, amount, type \\ "debit"),
+      do: %{session: section, amount: amount, type: type}
+
+    test "sums expenses by section, largest first, ignoring income" do
+      slices =
+        HomeLive.build_chart_slices([
+          movement("Moradia", 30_000),
+          movement("Lazer", 5_000),
+          movement("Moradia", 10_000),
+          movement("Salário", 500_000, "credit")
+        ])
+
+      assert Enum.map(slices, &{&1.label, &1.value, &1.percent}) == [
+               {"Moradia", 40_000, 88.9},
+               {"Lazer", 5_000, 11.1}
+             ]
+
+      # A cor segue a sessão (ordem alfabética), não o tamanho da fatia.
+      assert Enum.map(slices, &{&1.label, &1.slot}) == [{"Moradia", 2}, {"Lazer", 1}]
+    end
+
+    test "folds the smallest sections into Outras beyond seven" do
+      movements = for n <- 1..9, do: movement("Sessão #{n}", n * 1_000)
+
+      slices = HomeLive.build_chart_slices(movements)
+
+      assert length(slices) == 7
+      assert %{label: "Outras", value: 6_000, slot: "other"} = List.last(slices)
+      assert slices |> Enum.map(& &1.value) |> Enum.sum() == 45_000
+    end
   end
 end
