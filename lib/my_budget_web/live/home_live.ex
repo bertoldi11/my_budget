@@ -14,7 +14,8 @@ defmodule MyBudgetWeb.HomeLive do
      |> assign(:form, nil)
      |> assign(:categories_options, [])
      |> assign(:payment_method_options, [])
-     |> assign(:type_options, [])}
+     |> assign(:type_options, [])
+     |> assign(:chart_slices, [])}
   end
 
   def handle_params(params, _uri, socket) do
@@ -77,6 +78,13 @@ defmodule MyBudgetWeb.HomeLive do
     end
   end
 
+  def format_percent(percent),
+    do:
+      percent
+      |> :erlang.float_to_binary(decimals: 1)
+      |> String.replace(".", ",")
+      |> Kernel.<>("%")
+
   def bar_width(_amount, total) when total in [0, nil], do: "0%"
   def bar_width(amount, total), do: "#{Float.round(amount / total * 100, 1)}%"
 
@@ -84,28 +92,24 @@ defmodule MyBudgetWeb.HomeLive do
     do: MapSet.member?(expanded_categories, to_string(category_id))
 
   defp load_page(socket, month, year) do
-    scope = socket.assigns.current_scope
-    sections = list_movements(scope, month, year)
-    grand_total = compute_grand_total(sections)
-
     socket
     |> assign(:month, month)
     |> assign(:year, year)
     |> assign(:current_date, %{month: month, year: year, month_string: get_month_string(month)})
     |> assign(:next_date, shift_date(month, year, 1))
     |> assign(:previous_date, shift_date(month, year, -1))
-    |> assign(:sections, sections)
-    |> assign(:grand_total, grand_total)
+    |> reload_sections()
   end
 
   defp reload_sections(socket) do
     %{current_scope: scope, month: month, year: year} = socket.assigns
-    sections = list_movements(scope, month, year)
-    grand_total = compute_grand_total(sections)
+    movements = Movements.list_movements_details_by_month_year(scope, month, year)
+    sections = build_sections(movements)
 
     socket
     |> assign(:sections, sections)
-    |> assign(:grand_total, grand_total)
+    |> assign(:grand_total, compute_grand_total(sections))
+    |> assign(:chart_slices, build_chart_slices(movements))
   end
 
   defp assign_form_options(socket) do
@@ -117,12 +121,65 @@ defmodule MyBudgetWeb.HomeLive do
     |> assign(:type_options, MovementOptions.type_options())
   end
 
-  defp list_movements(scope, month, year) do
-    scope
-    |> Movements.list_movements_details_by_month_year(month, year)
+  defp build_sections(movements) do
+    movements
     |> Enum.group_by(&(&1.session || "Sem seção"))
     |> Enum.map(&build_section/1)
     |> Enum.sort_by(& &1.section_name)
+  end
+
+  # Quantas sessões ganham fatia própria no gráfico; as demais viram "Outras".
+  @chart_max_slices 7
+
+  @doc """
+  Builds the slices of the pie chart: the month's expenses (`"debit"`) summed
+  by section, largest first. Beyond #{@chart_max_slices} sections the smallest
+  ones are folded into "Outras". Each slice has its amount in cents, its share
+  (in %, one decimal) and a color slot (1..#{@chart_max_slices}, or `"other"`).
+
+  The color slot follows the section, not its size: sections are numbered in
+  alphabetical order, so a section keeps its color while the amounts change.
+  """
+  def build_chart_slices(movements) do
+    totals =
+      movements
+      |> Enum.filter(&(&1.type == "debit"))
+      |> Enum.group_by(&(&1.session || "Sem seção"), & &1.amount)
+      |> Enum.map(fn {name, amounts} -> {name, Enum.sum(amounts)} end)
+      |> Enum.filter(fn {_name, amount} -> amount > 0 end)
+      |> Enum.sort_by(fn {name, amount} -> {-amount, name} end)
+
+    {named, rest} =
+      if length(totals) > @chart_max_slices,
+        do: Enum.split(totals, @chart_max_slices - 1),
+        else: {totals, []}
+
+    slots =
+      named
+      |> Enum.map(&elem(&1, 0))
+      |> Enum.sort()
+      |> Enum.with_index(1)
+      |> Map.new()
+
+    grand_total = totals |> Enum.map(&elem(&1, 1)) |> Enum.sum()
+
+    named_slices = Enum.map(named, fn {name, amount} -> {name, amount, slots[name]} end)
+
+    other_slice =
+      case rest do
+        [] -> []
+        rest -> [{"Outras", rest |> Enum.map(&elem(&1, 1)) |> Enum.sum(), "other"}]
+      end
+
+    Enum.map(named_slices ++ other_slice, fn {name, amount, slot} ->
+      %{
+        label: name,
+        value: amount,
+        formatted: format_amount(amount),
+        percent: Float.round(amount / grand_total * 100, 1),
+        slot: slot
+      }
+    end)
   end
 
   defp build_section({section_name, movements}) do
