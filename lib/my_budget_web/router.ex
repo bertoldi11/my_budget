@@ -15,12 +15,29 @@ defmodule MyBudgetWeb.Router do
 
   pipeline :api do
     plug :accepts, ["json"]
+    plug :fetch_api_user
   end
 
-  # Other scopes may use custom stacks.
-  # scope "/api", MyBudgetWeb do
-  #   pipe_through :api
-  # end
+  ## API routes (consumed by the my_budget_mobile app)
+
+  scope "/api", MyBudgetWeb.Api, as: :api do
+    pipe_through :api
+
+    post "/users/log-in", UserSessionController, :create
+  end
+
+  scope "/api", MyBudgetWeb.Api, as: :api do
+    pipe_through [:api, :require_authenticated_api_user]
+
+    delete "/users/log-out", UserSessionController, :delete
+    get "/users/me", UserController, :show
+
+    # Movimentações do app: `index` é paginado (`page`/`per_page`) e `new` só
+    # devolve as opções dos selects do formulário.
+    get "/movement", MovementController, :index
+    get "/movement/new", MovementController, :new
+    post "/movement", MovementController, :create
+  end
 
   # Enable LiveDashboard and Swoosh mailbox preview in development
   if Application.compile_env(:my_budget, :dev_routes) do

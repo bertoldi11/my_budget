@@ -574,6 +574,46 @@ defmodule MyBudget.Movements do
   end
 
   @doc """
+  Returns one page of movements, newest first, with `:category` (and its
+  `:section`) and `:payment_method` preloaded.
+
+  `page` is 1-based. The order falls back to the id so that movements sharing an
+  `expend_date` keep a stable position between pages — without it, a row could
+  show up twice or be skipped as the client pages through.
+
+  ## Examples
+
+      iex> list_movement_page(scope, 1, 25)
+      [%Movement{}, ...]
+
+  """
+  def list_movement_page(%Scope{} = scope, page, per_page)
+      when is_integer(page) and page >= 1 and is_integer(per_page) and per_page >= 1 do
+    Movement
+    |> where([m], m.user_id == ^scope.user.id)
+    |> order_by([m], desc: m.expend_date, desc: m.id)
+    |> limit(^per_page)
+    |> offset(^((page - 1) * per_page))
+    |> Repo.all()
+    |> Repo.preload([[category: :section], :payment_method])
+  end
+
+  @doc """
+  Counts the movements of the scope, for the pagination metadata.
+
+  ## Examples
+
+      iex> count_movement(scope)
+      137
+
+  """
+  def count_movement(%Scope{} = scope) do
+    Movement
+    |> where([m], m.user_id == ^scope.user.id)
+    |> Repo.aggregate(:count)
+  end
+
+  @doc """
   Returns all movements of the given month/year for the scope, already joined
   with their category and section, ordered by section name, category name and
   then by `expend_date` from the most recent to the oldest.

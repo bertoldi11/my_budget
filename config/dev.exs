@@ -16,10 +16,16 @@ config :my_budget, MyBudget.Repo,
 # The watchers configuration can be used to run external
 # watchers to your application. For example, we can use it
 # to bundle .js and .css sources.
+# Em desenvolvimento, qualquer origem é liberada no /api: o endereço do servidor
+# do Expo muda conforme onde o app roda (localhost, IP da LAN, 10.0.2.2 no
+# emulador). Em produção vale a lista de CORS_ORIGINS (ver config/runtime.exs).
+config :my_budget, :cors_origins, :all
+
 config :my_budget, MyBudgetWeb.Endpoint,
-  # Binding to loopback ipv4 address prevents access from other machines.
-  # Change to `ip: {0, 0, 0, 0}` to allow access from other machines.
-  http: [ip: {127, 0, 0, 1}],
+  # Bound to all interfaces so the my_budget_mobile app can reach the dev server
+  # from an emulator or a physical device. Use `ip: {127, 0, 0, 1}` to restrict
+  # access back to this machine only.
+  http: [ip: {0, 0, 0, 0}],
   check_origin: false,
   code_reloader: true,
   debug_errors: true,

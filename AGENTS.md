@@ -1,5 +1,20 @@
 This is a web application written using the Phoenix web framework.
 
+## Projeto irmão: `../my_budget_mobile` (app Expo/React Native)
+
+`../my_budget_mobile` é o cliente mobile desta aplicação. São dois repos git separados, mas um
+sistema só.
+
+- **Antes de implementar qualquer funcionalidade aqui, verificar se `../my_budget_mobile` precisa
+  ser alterado também.** Informar explicitamente o que falta no outro repo, mesmo quando a
+  conclusão for "nada a mudar".
+- **A regra vale nas duas direções:** uma feature pedida no mobile normalmente exige rota,
+  contexto, schema ou migration aqui; uma mudança de API, contrato JSON ou paleta aqui normalmente
+  exige acompanhamento lá.
+- `assets/css/app.css` é a fonte da verdade da paleta dos **dois** projetos (os temas daisyUI e as
+  variáveis `--chart-series-*`). O mobile gera `src/constants/palette.ts` a partir dele via
+  `npm run sync:palette`. Ao mexer nas cores aqui, avisar que o mobile precisa ser regerado.
+
 ## Project guidelines
 
 - Use `mix precommit` alias when you are done with all changes and fix any pending issues

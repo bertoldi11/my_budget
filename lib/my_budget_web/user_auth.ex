@@ -105,6 +105,40 @@ defmodule MyBudgetWeb.UserAuth do
     end
   end
 
+  @doc """
+  Authenticates API requests from the `Authorization: Bearer <token>` header.
+
+  Always assigns `:current_scope`, which is nil when there is no valid token, so
+  controllers can tell apart "no user" from "not fetched". Also assigns
+  `:api_token` so log out can revoke exactly the token that was used.
+  """
+  def fetch_api_user(conn, _opts) do
+    with ["Bearer " <> token] <- get_req_header(conn, "authorization"),
+         %Accounts.User{} = user <- Accounts.get_user_by_api_token(token) do
+      conn
+      |> assign(:current_scope, Scope.for_user(user))
+      |> assign(:api_token, token)
+    else
+      _ -> assign(conn, :current_scope, Scope.for_user(nil))
+    end
+  end
+
+  @doc """
+  Used for API routes that require an authenticated user, answering 401 with a
+  JSON body instead of redirecting.
+  """
+  def require_authenticated_api_user(conn, _opts) do
+    if conn.assigns[:current_scope] && conn.assigns.current_scope.user do
+      conn
+    else
+      conn
+      |> put_status(:unauthorized)
+      |> put_view(json: MyBudgetWeb.ErrorJSON)
+      |> render(:"401")
+      |> halt()
+    end
+  end
+
   defp ensure_user_token(conn) do
     if token = get_session(conn, :user_token) do
       {token, conn}

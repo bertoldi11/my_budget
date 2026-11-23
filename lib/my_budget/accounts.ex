@@ -281,6 +281,44 @@ defmodule MyBudget.Accounts do
     :ok
   end
 
+  ## API tokens (mobile app)
+
+  @doc """
+  Generates an API token for the given user, to be sent as a bearer token by the
+  mobile app.
+
+  The encoded token is returned only here; the database keeps just its hash.
+  """
+  def generate_user_api_token(user) do
+    {encoded_token, user_token} = UserToken.build_api_token(user)
+    Repo.insert!(user_token)
+    encoded_token
+  end
+
+  @doc """
+  Gets the user for the given API token, or nil when the token is missing,
+  malformed, revoked or expired.
+  """
+  def get_user_by_api_token(token) do
+    case UserToken.verify_api_token_query(token) do
+      {:ok, query} -> Repo.one(query)
+      :error -> nil
+    end
+  end
+
+  @doc """
+  Revokes a single API token. Returns :ok even when the token does not exist,
+  so logging out is idempotent.
+  """
+  def delete_user_api_token(token) do
+    case UserToken.by_api_token_query(token) do
+      {:ok, query} -> Repo.delete_all(query)
+      :error -> {0, nil}
+    end
+
+    :ok
+  end
+
   ## Token helper
 
   defp update_user_and_delete_all_tokens(changeset) do
